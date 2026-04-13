@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafuSkill — Launch Token</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0d0d; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fee-panel {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .38s cubic-bezier(.4,0,.2,1), opacity .3s ease;
+      opacity: 0;
+    }
+    .fee-panel.open {
+      max-height: 300px;
+      opacity: 1;
+    }
+    .bar-track {
+      width: 100%;
+      height: 6px;
+      background: #2a2a2a;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #d4a017, #f0b429);
+      transition: width .5s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeOut  { from { opacity:1; transform:translateY(0); }  to { opacity:0; transform:translateY(10px); } }
+    .spinner      { width:16px;height:16px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
+    .spinner-gold { width:14px;height:14px;border:2px solid rgba(212,160,23,.25);border-top-color:#d4a017;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
+    .toast-enter  { animation:fadeInUp .35s ease forwards; }
+    .toast-exit   { animation:fadeOut  .35s ease forwards; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { useState, useRef, useEffect } = React;
+
+  /* ─────────────────────────────────────────
+     TRANSLATIONS
+  ───────────────────────────────────────── */
+  const T = {
+    zh: {
+      navItems: ["技能市场","发射台","文档","开发者"],
+      langLabel: "中文",
+      back: "返回",
+      pageTitle: "发射代币",
+      pageSubtitle: "通过 Flap 协议为您的 AI 技能创建 BEP-20 代币",
+      cardTitle: "代币信息",
+      tokenName: "代币名称", tokenNamePh: "例如 Code Review Agent Token",
+      ticker: "股票代码", tickerPh: "例如 CRVW",
+      imgHint: "Max Size: 5MB",
+      desc: "描述", descPh: "描述您的代币及其用途...",
+      selectSkill: "选择技能",
+      skillHint: "每个代币必须关联一个 AI 技能。选择此代币将代表的技能。",
+      searchPh: "搜索技能...",
+      bindUploadText: "上传绑定技能",
+      bindUploadSub: "支持 .json · .yaml · .zip 格式",
+      website: "网站", websitePh: "选填",
+      twitter: "推特", twitterPh: "选填",
+      feeTitle: "交易费率说明",
+      feeDesc: () => <><span style={S.feeBadge}>1%</span> 协议手续费将自动分配至 Skill 创作者奖励、AI 技能激励池与 SafuSkill 生态基金。费率由智能合约永久锁定，任何人无法单方面修改，持币者权益有合约保障。</>,
+      feeToggle: (open) => open ? "收起详情 ▲" : "查看分配详情 ▼",
+      feeHeader: "费率分配", feeTotal: "总计：100%",
+      feeLocked: "此比例由智能合约锁定，不可修改",
+      feeItems: [{ label:"平台", pct:30 }, { label:"开发者奖励", pct:40 }, { label:"Skill 奖励", pct:30 }],
+      createBtn: "创建代币",
+      footer: "技术支持 · Flap Protocol | BNB Chain",
+      umTitle: "上传技能",
+      umSub: (g) => <>与社区分享您的 AI Agent 技能。所有上传内容都会由 <span style={{color:"#d4a017"}}>{g}</span> 自动扫描。</>,
+      umTab1: "上传文件", umTab2: "从 GitHub 导入",
+      umSkillName: "技能名称", umSkillNamePh: "例如 Code Review Agent",
+      umDesc: "描述", umDescPh: "描述您的技能功能...",
+      umFile: "技能文件", umFileSub: "(.zip)",
+      umDropText: "点击上传或拖放文件", umDropSub: "最大 50MB",
+      umUploadBtn: "上传 & 扫描",
+      umGhUrl: "GitHub 仓库链接", umGhUrlPh: "https://github.com/username/repository",
+      umGhName: "自定义技能名称", umGhNamePh: "留空则使用仓库名称",
+      umGhNameHint: "若为空，技能名称将从仓库或 SKILL.md 中提取",
+      umGhDesc: "自定义描述", umGhDescPh: "留空则使用 SKILL.md 或 README 中的描述",
+      umGhDescHint: "若为空，描述将从 SKILL.md 前置信息或 README 内容中提取",
+      umImportBtn: "导入 & 扫描",
+      cmTitle: (t) => `选择购买多少 ${t} 币`,
+      cmDesc: (t) => <>购买少量代币有助于保护您的代币免受狙击手攻击（代币最大供应量为 <strong style={{color:"#e0e0e0"}}>10 亿</strong>）。您最多可以购买 <strong style={{color:"#e0e0e0"}}>8 亿枚 {t}</strong> 代币。如果您支付的金额超过所需金额，我们将退还差额。</>,
+      cmBalance: "钱包余额",
+      cmAmountPh: "输入购买数量",
+      cmReceive: (n, t) => <>≈ 将获得约 <span style={{color:"#9ca3af"}}>{n}</span> 枚 {t} 代币</>,
+      cmCreateBtn: "立马创建！",
+      cmWaiting: "等待钱包授权中...",
+      cmSuccess: "✅ 授权成功！",
+      cmPayApprox: "您将支付大约",
+      cmDeployCost: "部署成本：约 0.001 BNB",
+      t1Title: (t) => `正在启动 ${t} ...`,
+      t1Desc: "正在将元数据上传至 IPFS，这可能需要一些时间，请耐心等候。",
+      t2Title: "合约部署中...",
+      t2Desc: (t) => `正在 BNB Chain 上部署您的 ${t} 代币合约，请稍候。`,
+      t3Title: (t) => `${t} 代币已成功发射！`,
+      t3Desc: "您的代币已部署至链上，快去分享给社区吧！",
+      t3Btn: "查看代币详情 →",
+    },
+    en: {
+      navItems: ["Skill Market","Launchpad","Docs","Developer"],
+      langLabel: "English",
+      back: "Back",
+      pageTitle: "Launch Token",
+      pageSubtitle: "Create a BEP-20 token for your AI skill via the Flap Protocol",
+      cardTitle: "Token Info",
+      tokenName: "Token Name", tokenNamePh: "e.g. Code Review Agent Token",
+      ticker: "Ticker", tickerPh: "e.g. CRVW",
+      imgHint: "Max Size: 5MB",
+      desc: "Description", descPh: "Describe your token and its purpose...",
+      selectSkill: "Select Skill",
+      skillHint: "Each token must be linked to an AI skill. Select the skill this token will represent.",
+      searchPh: "Search skills...",
+      bindUploadText: "Upload Bound Skill",
+      bindUploadSub: "Supports .json · .yaml · .zip",
+      website: "Website", websitePh: "Optional",
+      twitter: "Twitter", twitterPh: "Optional",
+      feeTitle: "Transaction Fee Notice",
+      feeDesc: () => <><span style={S.feeBadge}>1%</span> protocol fee is automatically distributed to Skill creator rewards, AI skill incentive pool, and the SafuSkill ecosystem fund. The fee is permanently locked by smart contract and cannot be changed unilaterally.</>,
+      feeToggle: (open) => open ? "Hide Details ▲" : "View Distribution ▼",
+      feeHeader: "Fee Distribution", feeTotal: "Total: 100%",
+      feeLocked: "This allocation is permanently locked by smart contract",
+      feeItems: [{ label:"Platform", pct:30 }, { label:"Developer Rewards", pct:40 }, { label:"Skill Rewards", pct:30 }],
+      createBtn: "Create Token",
+      footer: "Powered by Flap Protocol | BNB Chain",
+      umTitle: "Upload Skill",
+      umSub: (g) => <>Share your AI Agent skill with the community. All uploads are automatically scanned by <span style={{color:"#d4a017"}}>{g}</span>.</>,
+      umTab1: "Upload File", umTab2: "Import from GitHub",
+      umSkillName: "Skill Name", umSkillNamePh: "e.g. Code Review Agent",
+      umDesc: "Description", umDescPh: "Describe your skill's functionality...",
+      umFile: "Skill File", umFileSub: "(.zip)",
+      umDropText: "Click to upload or drag & drop", umDropSub: "Max 50MB",
+      umUploadBtn: "Upload & Scan",
+      umGhUrl: "GitHub Repository URL", umGhUrlPh: "https://github.com/username/repository",
+      umGhName: "Custom Skill Name", umGhNamePh: "Leave blank to use repository name",
+      umGhNameHint: "If empty, skill name will be extracted from the repository or SKILL.md",
+      umGhDesc: "Custom Description", umGhDescPh: "Leave blank to use SKILL.md or README description",
+      umGhDescHint: "If empty, description will be extracted from SKILL.md frontmatter or README content",
+      umImportBtn: "Import & Scan",
+      cmTitle: (t) => `How much ${t} to buy`,
+      cmDesc: (t) => <>Buying a small amount helps protect your token from sniper attacks (max supply is <strong style={{color:"#e0e0e0"}}>1 Billion</strong>). You may buy up to <strong style={{color:"#e0e0e0"}}>800 Million {t}</strong> tokens. Any overpayment will be refunded.</>,
+      cmBalance: "Wallet Balance",
+      cmAmountPh: "Enter amount",
+      cmReceive: (n, t) => <>≈ You'll receive approximately <span style={{color:"#9ca3af"}}>{n}</span> {t} tokens</>,
+      cmCreateBtn: "Create Now!",
+      cmWaiting: "Awaiting wallet authorization...",
+      cmSuccess: "✅ Authorized!",
+      cmPayApprox: "You will pay approximately",
+      cmDeployCost: "Deployment cost: ~0.001 BNB",
+      t1Title: (t) => `Launching ${t} ...`,
+      t1Desc: "Uploading metadata to IPFS. This may take a moment, please be patient.",
+      t2Title: "Deploying contract...",
+      t2Desc: (t) => `Deploying your ${t} token contract on BNB Chain. Please wait.`,
+      t3Title: (t) => `${t} launched successfully!`,
+      t3Desc: "Your token is live on-chain. Share it with your community!",
+      t3Btn: "View Token Details →",
+    },
+  };
+
+  /* ─────────────────────────────────────────
+     STYLES
+  ───────────────────────────────────────── */
+  const S = {
+    root: { fontFamily:"'Inter','Segoe UI',sans-serif", background:"#0d0d0d", minHeight:"100vh", color:"#e0e0e0" },
+    nav: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 32px", height:64, background:"#111", borderBottom:"1px solid #222", position:"sticky", top:0, zIndex:200 },
+    logo: { display:"flex", alignItems:"center", gap:8, fontWeight:700, fontSize:18, color:"#fff", letterSpacing:.5 },
+    logoIcon: { width:28, height:28, borderRadius:6, background:"linear-gradient(135deg,#22c55e,#16a34a)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, color:"#fff", fontWeight:800 },
+    navLinks: { display:"flex", gap:4 },
+    navLink: { padding:"6px 16px", borderRadius:8, fontSize:14, color:"#9ca3af", cursor:"pointer", background:"transparent", border:"none", fontFamily:"inherit", transition:"color .2s,background .2s" },
+    navLinkActive: { color:"#d4a017", background:"rgba(212,160,23,.12)", fontWeight:600 },
+    navRight: { display:"flex", alignItems:"center", gap:12 },
+    langBtn: { background:"#1a1a1a", border:"1px solid #333", borderRadius:8, padding:"4px 12px", fontSize:13, color:"#ccc", cursor:"pointer", fontFamily:"inherit" },
+    langBtnActive: { background:"rgba(212,160,23,.12)", borderColor:"rgba(212,160,23,.3)", color:"#d4a017" },
+    bellBtn: { background:"transparent", border:"none", cursor:"pointer", fontSize:18, color:"#9ca3af", padding:4, lineHeight:1 },
+    walletBadge: { background:"#1a1a1a", border:"1px solid #333", borderRadius:20, padding:"5px 14px", fontSize:13, color:"#d4a017", display:"flex", alignItems:"center", gap:6, fontWeight:500 },
+    walletDot: { width:7, height:7, borderRadius:"50%", background:"#22c55e" },
+    page: { maxWidth:760, margin:"0 auto", padding:"48px 24px 80px" },
+    backRow: { display:"flex", alignItems:"center", gap:8, marginBottom:24, cursor:"pointer", width:"fit-content" },
+    backArrow: { fontSize:20, color:"#9ca3af", lineHeight:1 },
+    backText: { fontSize:14, color:"#9ca3af" },
+    pageTitle: { fontSize:30, fontWeight:700, color:"#fff", marginBottom:8 },
+    pageSubtitle: { fontSize:14, color:"#6b7280", marginBottom:36 },
+    card: { background:"#1a1a1a", borderRadius:16, border:"1px solid #2a2a2a", padding:32 },
+    cardTitle: { fontSize:17, fontWeight:600, color:"#fff", marginBottom:28, display:"flex", alignItems:"center", gap:8 },
+    formGroup: { marginBottom:24 },
+    label: { display:"block", fontSize:13, fontWeight:500, color:"#d1d5db", marginBottom:8 },
+    required: { color:"#d4a017", marginLeft:2 },
+    input: { width:"100%", background:"#111", border:"1px solid #2e2e2e", borderRadius:10, padding:"11px 14px", fontSize:14, color:"#e0e0e0", outline:"none", fontFamily:"inherit", boxSizing:"border-box", transition:"border-color .2s" },
+    inputFocus: { borderColor:"#d4a017" },
+    textarea: { width:"100%", background:"#111", border:"1px solid #2e2e2e", borderRadius:10, padding:"11px 14px", fontSize:14, color:"#e0e0e0", outline:"none", fontFamily:"inherit", boxSizing:"border-box", resize:"vertical", minHeight:120 },
+    twoCol: { display:"flex", gap:20, marginBottom:24, alignItems:"stretch" },
+    /* solid border on upload zone */
+    uploadZone: { width:200, flexShrink:0, background:"#111", border:"2px solid #2e2e2e", borderRadius:12, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, cursor:"pointer", transition:"border-color .2s", overflow:"hidden", position:"relative" },
+    uploadZoneHover: { borderColor:"#d4a017" },
+    uploadIcon: { fontSize:38, color:"#444", lineHeight:1 },
+    uploadHint: { fontSize:11, color:"#555", textAlign:"center", lineHeight:1.6 },
+    uploadPreviewImg: { position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" },
+    rightCol: { flex:1, display:"flex", flexDirection:"column", gap:0 },
+    skillHint: { fontSize:12, color:"#6b7280", marginBottom:12, lineHeight:1.6 },
+    searchWrap: { position:"relative", width:"100%" },
+    searchIcon: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:"#555", pointerEvents:"none", display:"flex", alignItems:"center" },
+    searchInput: { width:"100%", background:"#111", border:"1px solid #2e2e2e", borderRadius:10, padding:"11px 14px 11px 38px", fontSize:14, color:"#e0e0e0", outline:"none", fontFamily:"inherit", boxSizing:"border-box", transition:"border-color .2s" },
+    /* solid border on bind zone */
+    bindUploadZone: { marginTop:14, background:"#111", border:"2px solid #2e2e2e", borderRadius:12, padding:"22px 0", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, cursor:"pointer", transition:"border-color .2s" },
+    bindUploadIcon: { color:"#555", display:"flex", alignItems:"center" },
+    bindUploadText: { fontSize:13, color:"#6b7280" },
+    bindUploadSub: { fontSize:11, color:"#444" },
+    feeBox: { background:"rgba(212,160,23,.06)", border:"1px solid rgba(212,160,23,.2)", borderRadius:10, padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:10 },
+    feeIcon: { fontSize:16, flexShrink:0, marginTop:1 },
+    feeTitle: { fontSize:13, fontWeight:600, color:"#d4a017", marginBottom:4 },
+    feeDesc: { fontSize:12, color:"#8b8176", lineHeight:1.6 },
+    feeBadge: { display:"inline-block", background:"rgba(212,160,23,.15)", border:"1px solid rgba(212,160,23,.3)", borderRadius:6, padding:"1px 8px", fontSize:12, fontWeight:700, color:"#d4a017", marginRight:4 },
+    createBtn: { marginTop:28, width:"100%", padding:"15px", background:"linear-gradient(135deg,#d4a017,#c9961a)", border:"none", borderRadius:12, fontSize:15, fontWeight:700, color:"#000", cursor:"pointer", fontFamily:"inherit", letterSpacing:.3, display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
+    footer: { textAlign:"center", marginTop:40, fontSize:12, color:"#444" },
+    overlay: { position:"fixed", inset:0, background:"rgba(0,0,0,.72)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:24 },
+    modal: { background:"#1a1a1a", borderRadius:16, border:"1px solid #2a2a2a", width:"100%", maxWidth:600, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,.6)" },
+    modalHeader: { padding:"28px 28px 0" },
+    modalTitle: { fontSize:22, fontWeight:700, color:"#fff", marginBottom:6 },
+    modalSub: { fontSize:13, color:"#6b7280", lineHeight:1.6, marginBottom:24 },
+    tabBar: { display:"flex", background:"#111", borderRadius:10, padding:4, margin:"0 28px 24px", border:"1px solid #222" },
+    tab: { flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:7, padding:"9px 0", borderRadius:8, fontSize:13, fontWeight:500, color:"#6b7280", cursor:"pointer", border:"none", background:"transparent", fontFamily:"inherit", transition:"all .2s" },
+    tabActive: { background:"#1a1a1a", color:"#e0e0e0", boxShadow:"0 1px 4px rgba(0,0,0,.4)" },
+    modalBody: { padding:"0 28px 28px" },
+    /* solid border on skill file zone */
+    skillFileZone: { background:"#111", border:"2px solid #2e2e2e", borderRadius:12, padding:"36px 0", display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor:"pointer", transition:"border-color .2s" },
+    skillFileZoneHover: { borderColor:"#d4a017" },
+    skillFileZoneText: { fontSize:13, color:"#6b7280" },
+    skillFileZoneSub: { fontSize:11, color:"#444" },
+    fieldHint: { fontSize:11, color:"#555", marginTop:6, lineHeight:1.5 },
+    linkWrap: { position:"relative" },
+    linkPrefix: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", display:"flex", alignItems:"center", pointerEvents:"none" },
+    linkInput: { width:"100%", background:"#111", border:"1px solid #2e2e2e", borderRadius:10, padding:"11px 14px 11px 38px", fontSize:14, color:"#e0e0e0", outline:"none", fontFamily:"inherit", boxSizing:"border-box", transition:"border-color .2s" },
+    modalBtn: { width:"100%", padding:"14px", background:"linear-gradient(135deg,#d4a017,#c9961a)", border:"none", borderRadius:12, fontSize:14, fontWeight:700, color:"#000", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:28 },
+    ctOverlay: { position:"fixed", inset:0, background:"rgba(0,0,0,.78)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:24 },
+    ctModal: { background:"#1a1a1a", borderRadius:16, border:"1px solid #2a2a2a", width:"100%", maxWidth:480, boxShadow:"0 24px 64px rgba(0,0,0,.7)", padding:"28px" },
+    ctTitle: { fontSize:20, fontWeight:700, color:"#fff", marginBottom:10 },
+    ctDesc: { fontSize:13, color:"#6b7280", lineHeight:1.7, marginBottom:22 },
+    ctInputWrap: { display:"flex", alignItems:"center", background:"#111", border:"1px solid #2e2e2e", borderRadius:10, overflow:"hidden" },
+    ctInput: { flex:1, background:"transparent", border:"none", padding:"12px 14px", fontSize:14, color:"#e0e0e0", outline:"none", fontFamily:"inherit" },
+    ctInputSuffix: { padding:"0 16px 0 8px", fontSize:13, fontWeight:600, color:"#d4a017", whiteSpace:"nowrap" },
+    ctFooter: { display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:14 },
+    ctFooterL: { fontSize:12, color:"#6b7280" },
+    ctFooterR: { fontSize:12, color:"#555" },
+    toastWrap: { position:"fixed", bottom:24, right:24, width:320, zIndex:900 },
+    toastCard: { background:"#1c1c1c", borderRadius:12, borderLeft:"4px solid #d4a017", boxShadow:"0 8px 32px rgba(0,0,0,.5)", padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:12 },
+    toastIconWrap: { flexShrink:0, width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center" },
+    toastBody: { flex:1 },
+    toastTitle: { fontSize:13, fontWeight:600, color:"#e0e0e0", marginBottom:4 },
+    toastDesc: { fontSize:12, color:"#6b7280", lineHeight:1.5 },
+    toastViewBtn: { marginTop:10, background:"rgba(212,160,23,.15)", border:"1px solid rgba(212,160,23,.3)", borderRadius:6, padding:"5px 12px", fontSize:12, fontWeight:600, color:"#d4a017", cursor:"pointer", fontFamily:"inherit" },
+  };
+
+  /* ─────────────────────────────────────────
+     ICONS
+  ───────────────────────────────────────── */
+  const SearchIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <circle cx="6.5" cy="6.5" r="5" stroke="#666" strokeWidth="1.5"/>
+      <path d="M10.5 10.5L13.5 13.5" stroke="#666" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+  const UploadArrowIcon = ({ color="#555", size=28 }) => (
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <path d="M14 4v14M14 4l-4 4M14 4l4 4" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M4 18v4a2 2 0 002 2h16a2 2 0 002-2v-4" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  );
+  const LinkIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M6 9a3.5 3.5 0 005 0l1.5-1.5a3.5 3.5 0 00-5-5L6 4" stroke="#666" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M9 6a3.5 3.5 0 00-5 0L2.5 7.5a3.5 3.5 0 005 5L9 11" stroke="#666" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+  const GitHubIcon = ({ color="#000", size=16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.1 3.3 9.42 7.88 10.95.58.1.79-.25.79-.56v-2.03c-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.9 10.9 0 012.87-.39c.97 0 1.95.13 2.87.39 2.18-1.49 3.14-1.18 3.14-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56C20.71 21.41 24 17.1 24 12 24 5.65 18.85.5 12 .5z"/>
+    </svg>
+  );
+  const UploadTabIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v8M7 1L4.5 3.5M7 1l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M1.5 9.5v2A1.5 1.5 0 003 13h8a1.5 1.5 0 001.5-1.5v-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+  const CloseBtn = ({ onClick }) => (
+    <button onClick={onClick} style={{ background:"transparent", border:"none", color:"#555", cursor:"pointer", fontSize:20, lineHeight:1, padding:4 }}>✕</button>
+  );
+
+  /* ─────────────────────────────────────────
+     UPLOAD SKILL MODAL
+  ───────────────────────────────────────── */
+  function UploadSkillModal({ onClose, t }) {
+    const [tab, setTab] = useState("upload");
+    const [mFocused, setMFocused] = useState(null);
+    const [fileZoneHover, setFileZoneHover] = useState(false);
+    const skillFileRef = useRef();
+    const mInput = (f) => ({ ...S.input,  ...(mFocused===f ? S.inputFocus : {}) });
+    const mLink  = (f) => ({ ...S.linkInput, ...(mFocused===f ? S.inputFocus : {}) });
+
+    return (
+      <div style={S.overlay} onClick={onClose}>
+        <div style={S.modal} onClick={e=>e.stopPropagation()}>
+          <div style={S.modalHeader}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <div style={S.modalTitle}>{t.umTitle}</div>
+                <div style={S.modalSub}>{t.umSub("GoPlus AgentGuard")}</div>
+              </div>
+              <CloseBtn onClick={onClose}/>
+            </div>
+          </div>
+
+          <div style={S.tabBar}>
+            <button style={tab==="upload"?{...S.tab,...S.tabActive}:S.tab} onClick={()=>setTab("upload")}>
+              <UploadTabIcon/>{t.umTab1}
+            </button>
+            <button style={tab==="github"?{...S.tab,...S.tabActive}:S.tab} onClick={()=>setTab("github")}>
+              <GitHubIcon color={tab==="github"?"#e0e0e0":"#6b7280"} size={14}/>{t.umTab2}
+            </button>
+          </div>
+
+          <div style={S.modalBody}>
+            {tab==="upload" && (<>
+              <div style={S.formGroup}>
+                <label style={S.label}>{t.umSkillName}<span style={S.required}>*</span></label>
+                <input style={mInput("mName")} placeholder={t.umSkillNamePh} onFocus={()=>setMFocused("mName")} onBlur={()=>setMFocused(null)}/>
+              </div>
+              <div style={S.formGroup}>
+                <label style={S.label}>{t.umDesc}</label>
+                <textarea style={{...S.textarea,minHeight:120,...(mFocused==="mDesc"?S.inputFocus:{})}} placeholder={t.umDescPh} onFocus={()=>setMFocused("mDesc")} onBlur={()=>setMFocused(null)}/>
+              </div>
+              <div style={S.formGroup}>
+                <label style={S.label}>{t.umFile}<span style={S.required}>*</span> <span style={{color:"#555",fontWeight:400}}>{t.umFileSub}</span></label>
+                <input ref={skillFileRef} type="file" accept=".zip" style={{display:"none"}}/>
+                <div style={{...S.skillFileZone,...(fileZoneHover?S.skillFileZoneHover:{})}}
+                  onClick={()=>skillFileRef.current.click()}
+                  onMouseEnter={()=>setFileZoneHover(true)}
+                  onMouseLeave={()=>setFileZoneHover(false)}
+                >
+                  <UploadArrowIcon color={fileZoneHover?"#d4a017":"#555"} size={32}/>
+                  <div style={S.skillFileZoneText}>{t.umDropText}</div>
+                  <div style={S.skillFileZoneSub}>{t.umDropSub}</div>
+                </div>
+              </div>
+              <button style={S.modalBtn}><UploadArrowIcon color="#000" size={16}/>{t.umUploadBtn}</button>
+            </>)}
+
+            {tab==="github" && (<>
+              <div style={S.formGroup}>
+                <label style={S.label}>{t.umGhUrl}<span style={S.required}>*</span></label>
+                <div style={S.linkWrap}>
+                  <span style={S.linkPrefix}><LinkIcon/></span>
+                  <input style={mLink("ghUrl")} placeholder={t.umGhUrlPh} onFocus={()=>setMFocused("ghUrl")} onBlur={()=>setMFocused(null)}/>
+                </div>
+              </div>
+              <div style={S.formGroup}>
+                <label style={S.label}>{t.umGhName}</label>
+                <input style={mInput("ghName")} placeholder={t.umGhNamePh} onFocus={()=>setMFocused("ghName")} onBlur={()=>setMFocused(null)}/>
+                <div style={S.fieldHint}>{t.umGhNameHint}</div>
+              </div>
+              <div style={{...S.formGroup,marginBottom:0}}>
+                <label style={S.label}>{t.umGhDesc}</label>
+                <textarea style={{...S.textarea,minHeight:110,...(mFocused==="ghDesc"?S.inputFocus:{})}} placeholder={t.umGhDescPh} onFocus={()=>setMFocused("ghDesc")} onBlur={()=>setMFocused(null)}/>
+                <div style={S.fieldHint}>{t.umGhDescHint}</div>
+              </div>
+              <button style={S.modalBtn}><GitHubIcon color="#000" size={16}/>{t.umImportBtn}</button>
+            </>)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────────
+     CREATE TOKEN MODAL
+  ───────────────────────────────────────── */
+  function CreateTokenModal({ ticker, onClose, onSuccess, t }) {
+    const [amount, setAmount] = useState("");
+    const [phase, setPhase]   = useState("idle");
+
+    const tokenCount = amount && !isNaN(+amount) && +amount > 0
+      ? Math.floor(+amount / 0.0000003).toLocaleString() : "0";
+
+    const handleCreate = () => {
+      if (phase !== "idle") return;
+      setPhase("waiting");
+      setTimeout(() => {
+        setPhase("success");
+        setTimeout(() => { onClose(); onSuccess(); }, 1000);
+      }, 2500);
+    };
+
+    const btnContent = () => {
+      if (phase==="waiting") return <><div className="spinner"/>{t.cmWaiting}</>;
+      if (phase==="success") return t.cmSuccess;
+      return t.cmCreateBtn;
+    };
+    const btnStyle = {
+      ...S.createBtn, marginTop:0,
+      background: phase==="success" ? "linear-gradient(135deg,#22c55e,#16a34a)" : "linear-gradient(135deg,#d4a017,#c9961a)",
+      cursor: phase!=="idle" ? "not-allowed" : "pointer",
+      opacity: phase==="waiting" ? .9 : 1,
+      transition: "background .4s",
+    };
+
+    return (
+      <div style={S.ctOverlay} onClick={phase==="idle"?onClose:undefined}>
+        <div style={S.ctModal} onClick={e=>e.stopPropagation()}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+            <div style={S.ctTitle}>{t.cmTitle(ticker)}</div>
+            <CloseBtn onClick={onClose}/>
+          </div>
+
+          <div style={S.ctDesc}>{t.cmDesc(ticker)}</div>
+
+          {/* Wallet BNB balance */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#141414",border:"1px solid #2a2a2a",borderRadius:10,padding:"10px 14px",marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",flexShrink:0}}/>
+              <span style={{fontSize:12,color:"#6b7280"}}>{t.cmBalance}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:14,fontWeight:600,color:"#e0e0e0"}}>0.8432</span>
+              <span style={{fontSize:12,color:"#d4a017",fontWeight:600}}>BNB</span>
+            </div>
+          </div>
+
+          {/* Amount input */}
+          <div style={{...S.ctInputWrap,marginBottom:8}}>
+            <input style={S.ctInput} placeholder={t.cmAmountPh} type="number" min="0" value={amount} onChange={e=>setAmount(e.target.value)}/>
+            <span style={S.ctInputSuffix}>BNB</span>
+          </div>
+          <div style={{fontSize:12,color:"#555",marginBottom:20,paddingLeft:2}}>
+            {t.cmReceive(tokenCount, ticker)}
+          </div>
+
+          <button style={btnStyle} onClick={handleCreate} disabled={phase!=="idle"}>
+            {btnContent()}
+          </button>
+
+          <div style={S.ctFooter}>
+            <span style={S.ctFooterL}>{t.cmPayApprox} <strong style={{color:"#e0e0e0"}}>{amount||"0"} BNB</strong></span>
+            <span style={S.ctFooterR}>{t.cmDeployCost}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────────
+     TOAST
+  ───────────────────────────────────────── */
+  function Toast({ ticker, onDone, t }) {
+    const [step, setStep]       = useState(1);
+    const [exiting, setExiting] = useState(false);
+    useEffect(() => {
+      const a = setTimeout(() => setStep(2), 2500);
+      const b = setTimeout(() => setStep(3), 5500);
+      const c = setTimeout(() => { setExiting(true); setTimeout(onDone, 400); }, 10500);
+      return () => { clearTimeout(a); clearTimeout(b); clearTimeout(c); };
+    }, []);
+    const steps = [null,
+      { icon:<div className="spinner-gold"/>, title:t.t1Title(ticker), desc:t.t1Desc },
+      { icon:<div className="spinner-gold"/>, title:t.t2Title, desc:t.t2Desc(ticker) },
+      { icon:<span style={{fontSize:22}}>🎉</span>, title:t.t3Title(ticker), desc:t.t3Desc, btn:true },
+    ];
+    const cur = steps[step]; if (!cur) return null;
+    return (
+      <div style={S.toastWrap} className={exiting?"toast-exit":"toast-enter"}>
+        <div style={S.toastCard}>
+          <div style={S.toastIconWrap}>{cur.icon}</div>
+          <div style={S.toastBody}>
+            <div style={S.toastTitle}>{cur.title}</div>
+            <div style={S.toastDesc}>{cur.desc}</div>
+            {cur.btn && <button style={S.toastViewBtn}>{t.t3Btn}</button>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────────
+     MAIN PAGE
+  ───────────────────────────────────────── */
+  function LaunchToken() {
+    const [lang, setLang]               = useState("zh");
+    const [activeNavIdx, setActiveNavIdx] = useState(1);
+    const [logoPreview, setLogoPreview] = useState(null);
+    const [focused, setFocused]         = useState(null);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showToast, setShowToast]     = useState(false);
+    const [feeOpen, setFeeOpen]         = useState(false);
+    const [tickerVal, setTickerVal]     = useState("");
+    const fileRef = useRef();
+
+    const t = T[lang];
+    const effectiveTicker = tickerVal.trim() || "JIOJIO";
+
+    const handleFileChange = (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => setLogoPreview(ev.target.result);
+      reader.readAsDataURL(file);
+    };
+
+    const inp = (f) => ({ ...S.input, ...(focused===f ? S.inputFocus : {}) });
+
+    return (
+      <div style={S.root}>
+        {/* NAV */}
+        <nav style={S.nav}>
+          <div style={S.logo}><div style={S.logoIcon}>S</div>SafuSkill</div>
+          <div style={S.navLinks}>
+            {t.navItems.map((item,i) => (
+              <button key={i} style={activeNavIdx===i?{...S.navLink,...S.navLinkActive}:S.navLink} onClick={()=>setActiveNavIdx(i)}>{item}</button>
+            ))}
+          </div>
+          <div style={S.navRight}>
+            <button style={{...S.langBtn,...S.langBtnActive}} onClick={()=>setLang(l=>l==="zh"?"en":"zh")}>
+              {lang==="zh"?"中文 ▾":"English ▾"}
+            </button>
+            <button style={S.bellBtn}>🔔</button>
+            <div style={S.walletBadge}><div style={S.walletDot}/>0x168a...c6e6</div>
+          </div>
+        </nav>
+
+        {/* PAGE */}
+        <div style={S.page}>
+          <div style={S.backRow}><span style={S.backArrow}>←</span><span style={S.backText}>{t.back}</span></div>
+          <div style={S.pageTitle}>{t.pageTitle}</div>
+          <div style={S.pageSubtitle}>{t.pageSubtitle}</div>
+
+          {/* CARD */}
+          <div style={S.card}>
+            <div style={S.cardTitle}><span>📋</span> {t.cardTitle}</div>
+
+            {/* Two-col */}
+            <div style={S.twoCol}>
+              <div style={{...S.uploadZone,...(focused==="upload"?S.uploadZoneHover:{})}}
+                onClick={()=>fileRef.current.click()}
+                onMouseEnter={()=>setFocused("upload")}
+                onMouseLeave={()=>setFocused(null)}
+              >
+                <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{display:"none"}} onChange={handleFileChange}/>
+                {logoPreview ? (
+                  <img src={logoPreview} alt="preview" style={S.uploadPreviewImg}/>
+                ) : (<>
+                  <div style={S.uploadIcon}>
+                    <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                      <rect x="4" y="8" width="36" height="28" rx="4" stroke="#555" strokeWidth="2"/>
+                      <circle cx="15" cy="17" r="3" stroke="#555" strokeWidth="2"/>
+                      <path d="M4 30 L13 21 L20 28 L27 20 L40 30" stroke="#555" strokeWidth="2" strokeLinejoin="round"/>
+                      <path d="M30 6 L31.5 9.5 L35 11 L31.5 12.5 L30 16 L28.5 12.5 L25 11 L28.5 9.5 Z" fill="#d4a017"/>
+                    </svg>
+                  </div>
+                  <div style={S.uploadHint}>PNG · JPEG · WEBP · GIF<br/><span style={{color:"#444"}}>{t.imgHint}</span></div>
+                </>)}
+              </div>
+
+              <div style={S.rightCol}>
+                <div style={{...S.formGroup,flex:1,display:"flex",flexDirection:"column"}}>
+                  <label style={S.label}>{t.tokenName}<span style={S.required}>*</span></label>
+                  <input style={{...inp("name"),flex:1}} placeholder={t.tokenNamePh} onFocus={()=>setFocused("name")} onBlur={()=>setFocused(null)}/>
+                </div>
+                <div style={{...S.formGroup,flex:1,display:"flex",flexDirection:"column",marginBottom:0}}>
+                  <label style={S.label}>{t.ticker}<span style={S.required}>*</span></label>
+                  <input style={{...inp("symbol"),flex:1}} placeholder={t.tickerPh} value={tickerVal} onChange={e=>setTickerVal(e.target.value)} onFocus={()=>setFocused("symbol")} onBlur={()=>setFocused(null)}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div style={S.formGroup}>
+              <label style={S.label}>{t.desc}</label>
+              <textarea style={{...S.textarea,...(focused==="desc"?S.inputFocus:{})}} placeholder={t.descPh} onFocus={()=>setFocused("desc")} onBlur={()=>setFocused(null)}/>
+            </div>
+
+            {/* Select Skill */}
+            <div style={S.formGroup}>
+              <label style={S.label}>{t.selectSkill}<span style={S.required}>*</span></label>
+              <div style={S.skillHint}>{t.skillHint}</div>
+              <div style={S.searchWrap}>
+                <span style={S.searchIcon}><SearchIcon/></span>
+                <input style={{...S.searchInput,...(focused==="skill"?S.inputFocus:{})}} placeholder={t.searchPh} onFocus={()=>setFocused("skill")} onBlur={()=>setFocused(null)}/>
+              </div>
+              <div style={{...S.bindUploadZone,...(focused==="bindUpload"?{borderColor:"#d4a017"}:{})}}
+                onClick={()=>setShowUploadModal(true)}
+                onMouseEnter={()=>setFocused("bindUpload")}
+                onMouseLeave={()=>setFocused(null)}
+              >
+                <div style={S.bindUploadIcon}><UploadArrowIcon/></div>
+                <div style={S.bindUploadText}>{t.bindUploadText}</div>
+                <div style={S.bindUploadSub}>{t.bindUploadSub}</div>
+              </div>
+            </div>
+
+            {/* Website */}
+            <div style={S.formGroup}>
+              <label style={S.label}>{t.website}</label>
+              <input style={inp("website")} placeholder={t.websitePh} onFocus={()=>setFocused("website")} onBlur={()=>setFocused(null)}/>
+            </div>
+
+            {/* Twitter */}
+            <div style={S.formGroup}>
+              <label style={S.label}>{t.twitter}</label>
+              <input style={inp("twitter")} placeholder={t.twitterPh} onFocus={()=>setFocused("twitter")} onBlur={()=>setFocused(null)}/>
+            </div>
+
+            {/* Fee notice */}
+            <div style={{...S.formGroup,marginBottom:28}}>
+              <div style={S.feeBox}>
+                <span style={S.feeIcon}>💡</span>
+                <div style={{flex:1,minWidth:0}}>
+                  {/* title row */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                    <div style={S.feeTitle}>{t.feeTitle}</div>
+                    <button
+                      onClick={()=>setFeeOpen(o=>!o)}
+                      style={{background:"transparent",border:"none",cursor:"pointer",fontSize:11,fontWeight:600,color:"#d4a017",fontFamily:"inherit",padding:"2px 0",letterSpacing:.02,flexShrink:0,marginLeft:12}}
+                    >{t.feeToggle(feeOpen)}</button>
+                  </div>
+
+                  {/* desc */}
+                  <div style={S.feeDesc}>{t.feeDesc()}</div>
+
+                  {/* expandable panel */}
+                  <div className={`fee-panel${feeOpen?" open":""}`}>
+                    <div style={{marginTop:16,background:"#141414",borderRadius:10,border:"1px solid #2a2a2a",padding:"14px 16px"}}>
+                      {/* header */}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                        <span style={{fontSize:12,fontWeight:600,color:"#e0e0e0"}}>{t.feeHeader}</span>
+                        <span style={{fontSize:11,color:"#d4a017",fontWeight:600,background:"rgba(212,160,23,.1)",border:"1px solid rgba(212,160,23,.2)",borderRadius:5,padding:"2px 8px"}}>{t.feeTotal}</span>
+                      </div>
+
+                      {/* bars */}
+                      {t.feeItems.map(({label,pct})=>(
+                        <div key={label} style={{marginBottom:12}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                            <span style={{fontSize:12,color:"#9ca3af"}}>{label}</span>
+                            <span style={{fontSize:12,fontWeight:700,color:"#d4a017"}}>{pct}%</span>
+                          </div>
+                          <div className="bar-track">
+                            <div className="bar-fill" style={{width: feeOpen ? `${pct}%` : "0%"}}/>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* locked note */}
+                      <div style={{marginTop:10,fontSize:11,color:"#444",display:"flex",alignItems:"center",gap:5}}>
+                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                          <rect x="1.5" y="4.5" width="8" height="5.5" rx="1.5" stroke="#555" strokeWidth="1.1"/>
+                          <path d="M3 4.5V3a2.5 2.5 0 015 0v1.5" stroke="#555" strokeWidth="1.1" strokeLinecap="round"/>
+                        </svg>
+                        {t.feeLocked}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Create */}
+            <button style={S.createBtn} onClick={()=>setShowCreateModal(true)}>
+              {t.createBtn}
+            </button>
+          </div>
+
+          <div style={S.footer}>{t.footer}</div>
+        </div>
+
+        {/* MODALS & TOAST */}
+        {showUploadModal && <UploadSkillModal onClose={()=>setShowUploadModal(false)} t={t}/>}
+        {showCreateModal && (
+          <CreateTokenModal ticker={effectiveTicker}
+            onClose={()=>setShowCreateModal(false)}
+            onSuccess={()=>{ setShowCreateModal(false); setShowToast(true); }}
+            t={t}
+          />
+        )}
+        {showToast && <Toast ticker={effectiveTicker} onDone={()=>setShowToast(false)} t={t}/>}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<LaunchToken/>);
+</script>
+</body>
+</html>
