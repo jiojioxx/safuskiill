@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SafuSkill — 我的代币</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0d0d; font-family: 'Inter','Segoe UI',sans-serif; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #333; }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes dropIn  { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes popIn   { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+    @keyframes fadeInUp{ from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .drop-in  { animation: dropIn  .18s ease forwards; }
+    .pop-in   { animation: popIn   .45s cubic-bezier(.34,1.56,.64,1) forwards; }
+    .fade-up  { animation: fadeInUp .3s ease forwards; }
+    .spinner-w{ width:18px;height:18px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
+    .spinner-g{ width:16px;height:16px;border:2px solid rgba(34,197,94,.2);border-top-color:#22c55e;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { useState, useRef, useEffect } = React;
+
+  /* ─────────────────────────────────────
+     ICONS
+  ───────────────────────────────────── */
+  const IconGrid = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="1" width="6" height="6" rx="1.5" stroke={color} strokeWidth="1.4"/>
+      <rect x="9" y="1" width="6" height="6" rx="1.5" stroke={color} strokeWidth="1.4"/>
+      <rect x="1" y="9" width="6" height="6" rx="1.5" stroke={color} strokeWidth="1.4"/>
+      <rect x="9" y="9" width="6" height="6" rx="1.5" stroke={color} strokeWidth="1.4"/>
+    </svg>
+  );
+  const IconBag = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M5.5 5V4a2.5 2.5 0 015 0v1" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+      <rect x="1.5" y="5" width="13" height="9.5" rx="2" stroke={color} strokeWidth="1.4"/>
+    </svg>
+  );
+  const IconRocket = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M8 2C8 2 11 3.5 11 8c0 1.5-.5 3-1.5 4L8 14l-1.5-2C5.5 11 5 9.5 5 8c0-4.5 3-6 3-6z" stroke={color} strokeWidth="1.4" strokeLinejoin="round"/>
+      <circle cx="8" cy="7.5" r="1.2" stroke={color} strokeWidth="1.2"/>
+      <path d="M5 9.5C4 10 2.5 10.5 2 12.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M11 9.5c1 .5 2.5 1 3 3" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+  const IconDoc = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <rect x="2.5" y="1.5" width="11" height="13" rx="2" stroke={color} strokeWidth="1.4"/>
+      <path d="M5 5.5h6M5 8h6M5 10.5h4" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+  const IconUpload = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M8 2v8M8 2L5.5 4.5M8 2l2.5 2.5" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2 10v2.5A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V10" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+  const IconChart = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M2 13.5V2" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M2 13.5h12" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+      <rect x="4" y="8" width="2" height="5.5" rx="1" fill={color} opacity=".7"/>
+      <rect x="7.5" y="5" width="2" height="8.5" rx="1" fill={color} opacity=".85"/>
+      <rect x="11" y="9.5" width="2" height="4" rx="1" fill={color} opacity=".6"/>
+    </svg>
+  );
+  const IconGear = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="2.2" stroke={color} strokeWidth="1.4"/>
+      <path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.4 3.4l.85.85M11.75 11.75l.85.85M3.4 12.6l.85-.85M11.75 4.25l.85-.85" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+  const IconExternalLink = ({ size=13, color="#555" }) => (
+    <svg width={size} height={size} viewBox="0 0 13 13" fill="none">
+      <path d="M5.5 2.5H2A1.5 1.5 0 00.5 4v7A1.5 1.5 0 002 12.5h7A1.5 1.5 0 0010.5 11V7.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M7.5 1.5h4v4" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 1.5L6.5 7" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const GitHubIcon = ({ size=18, color="#fff" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.1 3.3 9.42 7.88 10.95.58.1.79-.25.79-.56v-2.03c-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.9 10.9 0 012.87-.39c.97 0 1.95.13 2.87.39 2.18-1.49 3.14-1.18 3.14-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.56C20.71 21.41 24 17.1 24 12 24 5.65 18.85.5 12 .5z"/>
+    </svg>
+  );
+
+  /* ─────────────────────────────────────
+     MOCK REWARD DATA
+     claimStatus: "unclaimed" | "review" | "approved"
+     GitHub 来源：OAuth 登录确认 repo 所有权即可自动通过，无需人工
+     ZIP 来源：需提交 repo 链接 + 声明，平台人工审核后释放
+  ───────────────────────────────────── */
+  const MOCK_REWARDS_INIT = [
+    { id:1, name:"Code Review Agent",   icon:"🤖", source:"github",
+      claimStatus:"approved",  pending:"0.0089 BNB", earned:"0.0234 BNB" },
+    { id:2, name:"Translation Agent",   icon:"🌐", source:"github",
+      claimStatus:"unclaimed", pending:"0.0064 BNB", earned:"0.0156 BNB" },
+    { id:3, name:"Image Gen Agent",     icon:"🎨", source:"zip",
+      claimStatus:"unclaimed", pending:"0.0102 BNB", earned:"0.0078 BNB" },
+    { id:4, name:"Data Analysis Agent", icon:"📊", source:"zip",
+      claimStatus:"rejected",  pending:"0.0047 BNB", earned:"0.0031 BNB",
+      rejectReason:"提交的仓库地址与技能内容不符，请核实后重新申请" },
+  ];
+
+  /* ─────────────────────────────────────
+     MOCK DISCOVER DATA (他人用你的仓库/ZIP 发行的代币)
+  ───────────────────────────────────── */
+  const MOCK_DISCOVER_RESULTS = [
+    { id:101, name:"AI Writing Assistant", icon:"✍️", token:"AIWA",
+      launchedBy:"0xd4f7...88a2", pendingBNB:"0.0312 BNB", launchDate:"2026/03/20" },
+    { id:102, name:"Data Viz Skill",       icon:"📊", token:"DVIZ",
+      launchedBy:"0x991c...3b5e", pendingBNB:"0.0089 BNB", launchDate:"2026/01/08" },
+  ];
+
+  /* ─────────────────────────────────────
+     CLAIM MODAL
+     steps: idle → connecting → main ←→ apply → submitting → main (status updated)
+                                                            → submit_error → retry
+     claimStatus: unclaimed | review | approved | rejected
+     GitHub 来源：自动通过；ZIP 来源：人工审核
+  ───────────────────────────────────── */
+  function ClaimModal({ onClose = ()=>{}, pageMode = false }) {
+    const [step,       setStep]     = useState("idle");
+    const [skills,     setSkills]   = useState(MOCK_REWARDS_INIT);
+    const [applySkill, setApply]    = useState(null);
+    const [repoUrl,    setRepoUrl]  = useState("");
+    const [checks,     setChecks]   = useState([false, false]);
+    const [claimingId, setClaiming] = useState(null);
+    const [claimedIds, setClaimed]  = useState(new Set());
+
+    // discover tab state
+    const [mainTab,            setMainTab]           = useState("mine");
+    const [discoverMode,       setDiscoverMode]      = useState("github");
+    const [searchRepo,         setSearchRepo]        = useState("");
+    const [searchResult,       setSearchResult]      = useState(null);
+    const [searching,          setSearching]         = useState(false);
+    const [claimingDiscId,     setClaimingDiscId]    = useState(null);
+    const [claimedDiscIds,     setClaimedDiscIds]    = useState(new Set());
+    const [disputeFields,      setDisputeFields]     = useState({ skillName:"", tokenAddr:"", note:"" });
+    const [disputeSubmitting,  setDisputeSubmitting] = useState(false);
+    const [disputes,           setDisputes]          = useState([
+      { id:"dsp0", skillName:"Data Science Helper", tokenAddr:"0x4a7c...f3e1",
+        status:"rejected", rejectReason:"未找到与该合约地址匹配的 ZIP 上传记录，请确认合约地址后重试" },
+    ]);
+
+    const busy     = ["connecting","submitting"].includes(step) || claimingId !== null;
+    const canClose = !busy;
+
+    // URL validation (only for ZIP)
+    const urlTouched = repoUrl.trim().length > 0;
+    const urlValid   = repoUrl.trim().startsWith("https://github.com/");
+    const urlError   = urlTouched && !urlValid
+      ? "请输入有效的 GitHub 仓库链接（https://github.com/...）" : null;
+
+    const ghConnect  = () => { setStep("connecting"); setTimeout(()=>setStep("main"), 2000); };
+
+    const startApply = (s) => { setApply(s); setRepoUrl(""); setChecks([false,false]); setStep("apply"); };
+
+    const submitApply = () => {
+      setStep("submitting");
+      setTimeout(() => {
+        const nextStatus = applySkill.source === "github" ? "approved" : "review";
+        setSkills(prev => prev.map(s =>
+          s.id === applySkill.id ? { ...s, claimStatus: nextStatus, rejectReason: undefined } : s
+        ));
+        setApply(null); setStep("main");
+      }, 1800);
+    };
+
+    // Retry after network error — preserves applySkill so user doesn't lose context
+    const retrySubmit = () => {
+      setStep("submitting");
+      setTimeout(() => {
+        const nextStatus = applySkill.source === "github" ? "approved" : "review";
+        setSkills(prev => prev.map(s =>
+          s.id === applySkill.id ? { ...s, claimStatus: nextStatus, rejectReason: undefined } : s
+        ));
+        setApply(null); setStep("main");
+      }, 1800);
+    };
+
+    const claimReward = (id) => {
+      if (claimingId || claimedIds.has(id)) return;
+      setClaiming(id);
+      setTimeout(() => { setClaimed(prev=>new Set([...prev,id])); setClaiming(null); }, 1800);
+    };
+
+    const canSubmitApply = applySkill
+      ? applySkill.source === "github"
+        ? true
+        : urlValid && checks[0] && checks[1]
+      : false;
+
+    const S = {
+      overlay: { position:"fixed", inset:0, background:"rgba(0,0,0,.8)", zIndex:800,
+        display:"flex", alignItems:"center", justifyContent:"center", padding:20 },
+      modal: { background:"#161616", borderRadius:14, border:"1px solid #222",
+        width:"100%", maxWidth:480, boxShadow:"0 24px 60px rgba(0,0,0,.8)", overflow:"hidden" },
+      hdr: { padding:"22px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"flex-start" },
+      body: { padding:"18px 24px 24px" },
+      title: { fontSize:17, fontWeight:700, color:"#fff", marginBottom:4 },
+      sub:   { fontSize:12, color:"#555" },
+      closeBtn: { background:"transparent", border:"none", color:"#444", cursor:"pointer",
+        fontSize:18, lineHeight:1, padding:4, marginLeft:12, flexShrink:0 },
+    };
+
+    const closeBtn = !pageMode ? <button style={S.closeBtn} onClick={onClose}>✕</button> : null;
+
+    const steps = (<>
+
+          {/* ── IDLE ── */}
+          {step==="idle" && (<>
+            <div style={S.hdr}>
+              <div>
+                <div style={S.title}>开发者收益认领</div>
+                <div style={S.sub}>发射权与认领权分离 · 需通过 GitHub 完成身份认证</div>
+              </div>
+              {closeBtn}
+            </div>
+            <div style={S.body}>
+              {/* flow steps */}
+              <div style={{display:"flex",alignItems:"center",gap:0,background:"#111",border:"1px solid #1e1e1e",borderRadius:10,padding:"14px 18px",marginBottom:18}}>
+                {[{n:1,label:"GitHub 登录"},{n:2,label:"提交认领申请"},{n:3,label:"平台审核通过"}].map((s,i,arr)=>(
+                  <React.Fragment key={s.n}>
+                    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                      <div style={{width:26,height:26,borderRadius:"50%",background:"#1a1a1a",border:"1.5px solid #2e2e2e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#555"}}>{s.n}</div>
+                      <div style={{fontSize:10,color:"#444",textAlign:"center",whiteSpace:"nowrap"}}>{s.label}</div>
+                    </div>
+                    {i<arr.length-1 && <div style={{width:20,height:1,background:"#222",flexShrink:0,marginBottom:14}}/>}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <button onClick={ghConnect}
+                style={{width:"100%",padding:"12px",background:"#1e2327",border:"1px solid #333",borderRadius:10,
+                  fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit",
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:9,transition:"background .15s,border-color .15s"}}
+                onMouseOver={e=>{e.currentTarget.style.background="#252c32";e.currentTarget.style.borderColor="#444";}}
+                onMouseOut={e=>{e.currentTarget.style.background="#1e2327";e.currentTarget.style.borderColor="#333";}}>
+                <GitHubIcon size={15} color="#fff"/>
+                使用 GitHub 登录
+              </button>
+              <div style={{marginTop:9,fontSize:11,color:"#2e2e2e",textAlign:"center"}}>
+                仅读取账号信息，不会访问或修改您的仓库
+              </div>
+            </div>
+          </>)}
+
+          {/* ── CONNECTING ── */}
+          {step==="connecting" && (
+            <div style={{padding:"52px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #222",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div className="spinner-g"/>
+              </div>
+              <div style={{fontSize:14,fontWeight:600,color:"#ccc"}}>正在连接 GitHub...</div>
+            </div>
+          )}
+
+          {/* ── SUBMITTING ── */}
+          {step==="submitting" && (
+            <div style={{padding:"52px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #222",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div className="spinner-g"/>
+              </div>
+              <div style={{fontSize:14,fontWeight:600,color:"#ccc"}}>正在提交认领申请...</div>
+              <div style={{fontSize:12,color:"#333"}}>请稍候，不要关闭此窗口</div>
+            </div>
+          )}
+
+          {/* ── SUBMIT ERROR ── */}
+          {step==="submit_error" && (
+            <div style={{padding:"44px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(239,68,68,.07)",border:"1px solid rgba(239,68,68,.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,color:"#ef4444"}}>
+                ✕
+              </div>
+              <div style={{fontSize:15,fontWeight:600,color:"#e0e0e0"}}>提交失败</div>
+              <div style={{fontSize:12,color:"#555",textAlign:"center",lineHeight:1.7}}>
+                网络异常，您的申请未提交成功<br/>请检查网络连接后重试
+              </div>
+              <div style={{display:"flex",gap:10,marginTop:4}}>
+                <button onClick={()=>setStep("apply")}
+                  style={{padding:"8px 20px",background:"transparent",border:"1px solid #2e2e2e",borderRadius:8,fontSize:13,color:"#666",cursor:"pointer",fontFamily:"inherit"}}>
+                  返回修改
+                </button>
+                <button onClick={retrySubmit}
+                  style={{padding:"8px 20px",background:"linear-gradient(135deg,#d4a017,#c9961a)",border:"none",borderRadius:8,fontSize:13,fontWeight:700,color:"#000",cursor:"pointer",fontFamily:"inherit"}}
+                  onMouseOver={e=>e.currentTarget.style.opacity=".85"}
+                  onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                  重新提交
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── MAIN: tabbed (我发布的技能 / 他人发布) ── */}
+          {step==="main" && (<>
+            <div style={S.hdr}>
+              <div>
+                <div style={S.title}>开发者收益认领</div>
+                <div style={{display:"flex",alignItems:"center",gap:5,marginTop:5}}>
+                  <GitHubIcon size={12} color="#555"/>
+                  <span style={{fontSize:12,color:"#555"}}>@safuskill-dev</span>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{fontSize:11,color:"#22c55e",fontWeight:600}}>已连接</span>
+                  <button onClick={()=>setStep("idle")} style={{marginLeft:4,background:"transparent",border:"none",fontSize:11,color:"#3a3a3a",cursor:"pointer",fontFamily:"inherit",padding:0}}>切换</button>
+                </div>
+              </div>
+              {closeBtn}
+            </div>
+            <div style={S.body}>
+
+              {/* Tab switcher */}
+              <div style={{display:"flex",gap:2,background:"#111",borderRadius:9,padding:3,marginBottom:16,border:"1px solid #1a1a1a"}}>
+                {[["mine","领取收益"],["discover","发现认领"]].map(([key,label])=>(
+                  <button key={key} onClick={()=>setMainTab(key)}
+                    style={{flex:1,padding:"7px",borderRadius:7,border:"none",fontSize:12,fontWeight:mainTab===key?700:400,cursor:"pointer",fontFamily:"inherit",
+                      background:mainTab===key?"#1e1e1e":"transparent",
+                      color:mainTab===key?"#d4a017":"#555",transition:"all .15s"}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* ─── 我发布的技能 ─── */}
+              {mainTab==="mine" && (<>
+                <div style={{fontSize:11,color:"#333",marginBottom:12,letterSpacing:.05}}>
+                  开发者奖励 = 交易税费的 70%，发射代币不等于自动获得奖励，需通过认领申请
+                </div>
+                {skills.map(r => {
+                  const isClaiming = claimingId === r.id;
+                  const isClaimed  = claimedIds.has(r.id);
+                  const isRejected = r.claimStatus === "rejected";
+                  return (
+                    <div key={r.id} style={{padding:"12px 0",borderBottom:"1px solid #1a1a1a",background:isRejected?"rgba(239,68,68,.02)":"transparent"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:11}}>
+                        <div style={{width:34,height:34,borderRadius:9,background:isRejected?"rgba(239,68,68,.07)":"#1a1a1a",border:`1px solid ${isRejected?"rgba(239,68,68,.18)":"#222"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>
+                          {r.icon}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:500,color:"#d0d0d0",marginBottom:2}}>{r.name}</div>
+                          <div style={{fontSize:11,color:"#3a3a3a"}}>{r.source==="zip"?"社区上传":"GitHub 来源"} · 累计 {r.earned}</div>
+                        </div>
+                        {r.claimStatus==="unclaimed" && (
+                          <button onClick={()=>startApply(r)}
+                            style={{fontSize:12,fontWeight:600,color:"#d4a017",background:"rgba(212,160,23,.07)",border:"1px solid rgba(212,160,23,.18)",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}
+                            onMouseOver={e=>e.currentTarget.style.background="rgba(212,160,23,.14)"}
+                            onMouseOut={e=>e.currentTarget.style.background="rgba(212,160,23,.07)"}>
+                            申请认领
+                          </button>
+                        )}
+                        {r.claimStatus==="review" && (
+                          <div style={{fontSize:11,color:"#7a6020",background:"rgba(212,160,23,.06)",border:"1px solid rgba(212,160,23,.14)",borderRadius:6,padding:"4px 11px",flexShrink:0,display:"flex",alignItems:"center",gap:5}}>
+                            <div className="spinner-g" style={{width:9,height:9,borderWidth:1.5,borderTopColor:"#a07012",borderColor:"rgba(160,112,18,.2)"}}/>
+                            审核中
+                          </div>
+                        )}
+                        {r.claimStatus==="rejected" && (
+                          <button onClick={()=>startApply(r)}
+                            style={{fontSize:12,fontWeight:600,color:"#ef4444",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.18)",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}
+                            onMouseOver={e=>e.currentTarget.style.background="rgba(239,68,68,.12)"}
+                            onMouseOut={e=>e.currentTarget.style.background="rgba(239,68,68,.06)"}>
+                            重新申请
+                          </button>
+                        )}
+                        {r.claimStatus==="approved" && (
+                          isClaimed ? (
+                            <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              已领取
+                            </div>
+                          ) : (
+                            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                              <span style={{fontSize:13,fontWeight:700,color:"#22c55e"}}>+{r.pending}</span>
+                              <button onClick={()=>claimReward(r.id)} disabled={!!claimingId}
+                                style={{display:"flex",alignItems:"center",gap:5,padding:"5px 13px",background:isClaiming?"transparent":"rgba(34,197,94,.12)",border:"1px solid rgba(34,197,94,.25)",borderRadius:7,fontSize:12,fontWeight:600,color:"#22c55e",cursor:claimingId?"not-allowed":"pointer",fontFamily:"inherit",opacity:claimingId&&!isClaiming?.3:1,transition:"opacity .15s"}}
+                                onMouseOver={e=>{if(!claimingId)e.currentTarget.style.background="rgba(34,197,94,.22)";}}
+                                onMouseOut={e=>{e.currentTarget.style.background=isClaiming?"transparent":"rgba(34,197,94,.12)";}}>
+                                {isClaiming?<><div className="spinner-g" style={{width:10,height:10,borderWidth:1.5}}/>结算中</>:"领取"}
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                      {isRejected && r.rejectReason && (
+                        <div style={{marginTop:7,marginLeft:45,fontSize:11,color:"#7a2a2a",lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:5}}>
+                          <span style={{flexShrink:0,opacity:.7}}>⚠</span>
+                          {r.rejectReason}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>)}
+
+              {/* ─── 他人发布 ─── */}
+              {mainTab==="discover" && (<>
+
+                {/* Source mode: GitHub / ZIP */}
+                <div style={{display:"flex",gap:7,marginBottom:14}}>
+                  {[["github","GitHub 仓库"],["zip","ZIP 文件"]].map(([key,label])=>(
+                    <button key={key}
+                      onClick={()=>{setDiscoverMode(key);setSearchResult(null);setSearchRepo("");setDisputeDone(false);setDisputeFields({skillName:"",tokenAddr:"",note:""});}}
+                      style={{padding:"5px 14px",borderRadius:7,border:`1px solid ${discoverMode===key?"rgba(212,160,23,.35)":"#1e1e1e"}`,fontSize:12,fontWeight:discoverMode===key?600:400,
+                        color:discoverMode===key?"#d4a017":"#555",background:discoverMode===key?"rgba(212,160,23,.06)":"transparent",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── GitHub 仓库模式 ── */}
+                {discoverMode==="github" && (<>
+                  <div style={{fontSize:11,color:"#444",marginBottom:12,lineHeight:1.65}}>
+                    输入您的 GitHub 仓库链接，查找平台上使用该仓库发行的代币。已通过 OAuth 验证所有权，搜索结果可直接认领。
+                  </div>
+                  <div style={{display:"flex",gap:8,marginBottom:14}}>
+                    <input
+                      value={searchRepo}
+                      onChange={e=>setSearchRepo(e.target.value)}
+                      placeholder="https://github.com/your-org/your-skill"
+                      style={{flex:1,background:"#111",border:"1px solid #222",borderRadius:8,padding:"9px 12px",fontSize:13,color:"#e0e0e0",outline:"none",fontFamily:"inherit",boxSizing:"border-box",transition:"border-color .2s"}}
+                      onFocus={e=>e.currentTarget.style.borderColor="rgba(212,160,23,.35)"}
+                      onBlur={e=>e.currentTarget.style.borderColor="#222"}
+                    />
+                    <button
+                      onClick={()=>{
+                        if(!searchRepo.trim().startsWith("https://github.com/"))return;
+                        setSearching(true);setSearchResult(null);
+                        setTimeout(()=>{setSearching(false);setSearchResult(MOCK_DISCOVER_RESULTS);},1600);
+                      }}
+                      disabled={searching||!searchRepo.trim().startsWith("https://github.com/")}
+                      style={{padding:"9px 16px",background:"rgba(212,160,23,.1)",border:"1px solid rgba(212,160,23,.2)",borderRadius:8,fontSize:13,fontWeight:600,
+                        color:(searching||!searchRepo.trim().startsWith("https://github.com/"))?"#555":"#d4a017",
+                        cursor:(searching||!searchRepo.trim().startsWith("https://github.com/"))?"not-allowed":"pointer",
+                        fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+                      {searching?<><div className="spinner-g" style={{width:10,height:10,borderWidth:1.5}}/>搜索中</>:"搜索"}
+                    </button>
+                  </div>
+
+                  {searchResult && searchResult.length===0 && (
+                    <div style={{textAlign:"center",padding:"24px 0",color:"#333",fontSize:12}}>
+                      未找到使用该仓库链接发行的代币
+                    </div>
+                  )}
+                  {searchResult && searchResult.length>0 && (<>
+                    <div style={{fontSize:11,color:"#555",marginBottom:10}}>
+                      发现 {searchResult.length} 个代币使用了该仓库链接 · GitHub OAuth 已验证，可直接认领
+                    </div>
+                    {searchResult.map(item=>{
+                      const isClaiming = claimingDiscId===item.id;
+                      const isClaimed  = claimedDiscIds.has(item.id);
+                      return (
+                        <div key={item.id} style={{display:"flex",alignItems:"center",gap:11,padding:"11px 0",borderBottom:"1px solid #1a1a1a"}}>
+                          <div style={{width:34,height:34,borderRadius:9,background:"#1a1a1a",border:"1px solid #222",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>
+                            {item.icon}
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:13,fontWeight:500,color:"#d0d0d0",marginBottom:3,display:"flex",alignItems:"center",gap:6}}>
+                              {item.name}
+                              <span style={{fontSize:10,color:"#d4a017",background:"rgba(212,160,23,.07)",border:"1px solid rgba(212,160,23,.14)",borderRadius:4,padding:"1px 6px"}}>${item.token}</span>
+                            </div>
+                            <div style={{fontSize:11,color:"#3a3a3a"}}>发行方 {item.launchedBy} · {item.launchDate} · 待领取 {item.pendingBNB}</div>
+                          </div>
+                          {isClaimed ? (
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                              <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:3}}>
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                已加入收益列表
+                              </div>
+                              <button onClick={()=>setMainTab("mine")}
+                                style={{fontSize:11,color:"#d4a017",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",padding:0}}>
+                                前往领取 →
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={()=>{
+                                setClaimingDiscId(item.id);
+                                setTimeout(()=>{
+                                  setClaimedDiscIds(prev=>new Set([...prev,item.id]));
+                                  setClaimingDiscId(null);
+                                  setSkills(prev=>[...prev,{id:Date.now(),name:item.name,icon:item.icon,source:"github",claimStatus:"approved",pending:item.pendingBNB,earned:"0 BNB"}]);
+                                },1600);
+                              }}
+                              disabled={isClaiming}
+                              style={{fontSize:12,fontWeight:600,color:"#d4a017",background:"rgba(212,160,23,.07)",border:"1px solid rgba(212,160,23,.18)",borderRadius:7,padding:"5px 13px",cursor:isClaiming?"not-allowed":"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}
+                              onMouseOver={e=>{if(!isClaiming)e.currentTarget.style.background="rgba(212,160,23,.14)";}}
+                              onMouseOut={e=>e.currentTarget.style.background="rgba(212,160,23,.07)"}>
+                              {isClaiming?<><div className="spinner-g" style={{width:9,height:9,borderWidth:1.5,borderTopColor:"#c9961a",borderColor:"rgba(212,160,23,.2)"}}/>认领中</>:"认领"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>)}
+                </>)}
+
+                {/* ── ZIP 文件模式 ── */}
+                {discoverMode==="zip" && (<>
+                  <div style={{fontSize:11,color:"#444",marginBottom:14,lineHeight:1.65}}>
+                    如有他人使用您的 ZIP 文件发行代币并获取收益，可在此提交争议申请。平台核实后将收益转至您的绑定钱包，并出现在「领取收益」列表。
+                  </div>
+
+                  {/* Disputes history list */}
+                  {disputes.length>0 && (
+                    <div style={{marginBottom:18}}>
+                      <div style={{fontSize:11,color:"#333",marginBottom:8,letterSpacing:.04}}>争议记录</div>
+                      {disputes.map(d=>{
+                        const isApproved  = d.status==="approved";
+                        const isRejected  = d.status==="rejected";
+                        const isReviewing = d.status==="reviewing";
+                        return (
+                          <div key={d.id} style={{
+                            background:isApproved?"rgba(34,197,94,.03)":isRejected?"rgba(239,68,68,.03)":"#111",
+                            border:`1px solid ${isApproved?"rgba(34,197,94,.14)":isRejected?"rgba(239,68,68,.14)":"#1e1e1e"}`,
+                            borderRadius:9,padding:"11px 13px",marginBottom:8
+                          }}>
+                            {/* Row: name + addr + badge */}
+                            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:(isRejected||isApproved)?8:0}}>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:12,fontWeight:600,color:"#ccc",marginBottom:2}}>{d.skillName}</div>
+                                <div style={{fontSize:11,color:"#3a3a3a",fontFamily:"monospace"}}>{d.tokenAddr}</div>
+                              </div>
+                              {isReviewing && (
+                                <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#7a6020",background:"rgba(212,160,23,.06)",border:"1px solid rgba(212,160,23,.14)",borderRadius:6,padding:"3px 10px",flexShrink:0}}>
+                                  <div className="spinner-g" style={{width:8,height:8,borderWidth:1.5,borderTopColor:"#a07012",borderColor:"rgba(160,112,18,.2)"}}/>
+                                  审核中
+                                </div>
+                              )}
+                              {isApproved && (
+                                <div style={{fontSize:11,color:"#22c55e",background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.14)",borderRadius:6,padding:"3px 10px",flexShrink:0,display:"flex",alignItems:"center",gap:4}}>
+                                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="4" fill="#22c55e"/><path d="M2 4.5l1.5 1.5L7 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  已通过
+                                </div>
+                              )}
+                              {isRejected && (
+                                <div style={{fontSize:11,color:"#ef4444",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.14)",borderRadius:6,padding:"3px 10px",flexShrink:0}}>
+                                  未通过
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Approved: go claim */}
+                            {isApproved && (
+                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(34,197,94,.04)",border:"1px solid rgba(34,197,94,.1)",borderRadius:7,padding:"8px 11px"}}>
+                                <span style={{fontSize:11,color:"#3a7a4a"}}>收益已解锁，可前往领取</span>
+                                <button
+                                  onClick={()=>{
+                                    setSkills(prev=>[...prev,{id:"disp-"+d.id,name:d.skillName,icon:"📦",source:"zip",claimStatus:"approved",pending:"0.0157 BNB",earned:"0 BNB"}]);
+                                    setMainTab("mine");
+                                  }}
+                                  style={{fontSize:11,fontWeight:700,color:"#000",background:"linear-gradient(135deg,#d4a017,#c9961a)",border:"none",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>
+                                  前往领取收益 →
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Rejected: reason + resubmit */}
+                            {isRejected && (
+                              <div>
+                                <div style={{display:"flex",alignItems:"flex-start",gap:5,fontSize:11,color:"#7a2a2a",lineHeight:1.55,marginBottom:8}}>
+                                  <span style={{flexShrink:0}}>⚠</span>{d.rejectReason}
+                                </div>
+                                <button
+                                  onClick={()=>{setDisputeFields({skillName:d.skillName,tokenAddr:d.tokenAddr,note:""});setDisputes(prev=>prev.filter(x=>x.id!==d.id));}}
+                                  style={{fontSize:11,fontWeight:600,color:"#ef4444",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.2)",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>
+                                  重新申请
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* New dispute form */}
+                  <div style={{fontSize:11,fontWeight:600,color:"#333",marginBottom:10,letterSpacing:.04}}>提交新争议</div>
+                  {[
+                    { key:"skillName", label:"您的技能名称",   placeholder:"例如 Code Review Agent" },
+                    { key:"tokenAddr", label:"合约地址",       placeholder:"0x..." },
+                    { key:"note",      label:"补充说明",       placeholder:"简述您的开发历史、仓库地址等证明信息…", multi:true },
+                  ].map(f=>(
+                    <div key={f.key} style={{marginBottom:12}}>
+                      <div style={{fontSize:12,fontWeight:500,color:"#777",marginBottom:5}}>{f.label} <span style={{color:"#d4a017"}}>*</span></div>
+                      {f.multi ? (
+                        <textarea value={disputeFields[f.key]}
+                          onChange={e=>setDisputeFields(p=>({...p,[f.key]:e.target.value}))}
+                          placeholder={f.placeholder}
+                          style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:8,padding:"9px 12px",fontSize:13,color:"#e0e0e0",outline:"none",fontFamily:"inherit",boxSizing:"border-box",resize:"vertical",minHeight:68,transition:"border-color .2s"}}
+                          onFocus={e=>e.currentTarget.style.borderColor="rgba(212,160,23,.35)"}
+                          onBlur={e=>e.currentTarget.style.borderColor="#222"}/>
+                      ) : (
+                        <input value={disputeFields[f.key]}
+                          onChange={e=>setDisputeFields(p=>({...p,[f.key]:e.target.value}))}
+                          placeholder={f.placeholder}
+                          style={{width:"100%",background:"#111",border:"1px solid #222",borderRadius:8,padding:"9px 12px",fontSize:13,color:"#e0e0e0",outline:"none",fontFamily:"inherit",boxSizing:"border-box",transition:"border-color .2s"}}
+                          onFocus={e=>e.currentTarget.style.borderColor="rgba(212,160,23,.35)"}
+                          onBlur={e=>e.currentTarget.style.borderColor="#222"}/>
+                      )}
+                    </div>
+                  ))}
+                  {(()=>{
+                    const disabled = disputeSubmitting || !disputeFields.skillName.trim() || !disputeFields.tokenAddr.trim() || !disputeFields.note.trim();
+                    const submit = () => {
+                      const newId = "dsp"+Date.now();
+                      setDisputeSubmitting(true);
+                      const entry = { id:newId, skillName:disputeFields.skillName, tokenAddr:disputeFields.tokenAddr, status:"reviewing", rejectReason:"" };
+                      setDisputes(prev=>[...prev, entry]);
+                      setDisputeFields({skillName:"",tokenAddr:"",note:""});
+                      setDisputeSubmitting(false);
+                      setTimeout(()=>setDisputes(prev=>prev.map(d=>d.id===newId?{...d,status:"approved"}:d)), 3000);
+                    };
+                    return (<>
+                      <button onClick={submit} disabled={disabled}
+                        style={{width:"100%",marginTop:4,padding:"10px",borderRadius:9,border:"none",fontSize:13,fontWeight:700,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",
+                          background:disabled?"#181818":"linear-gradient(135deg,#d4a017,#c9961a)",
+                          color:disabled?"#2e2e2e":"#000",transition:"background .15s,color .15s",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}
+                        onMouseOver={e=>{if(!disabled)e.currentTarget.style.opacity=".88";}}
+                        onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                        {disputeSubmitting?<><div className="spinner-g" style={{width:11,height:11,borderWidth:1.5}}/>提交中</>:"提交争议申请"}
+                      </button>
+                      <div style={{marginTop:7,fontSize:11,color:"#2a2a2a",textAlign:"center"}}>审核通过后，收益将出现在「领取收益」列表</div>
+                    </>);
+                  })()}
+                </>)}
+
+              </>)}
+
+            </div>
+          </>)}
+
+          {/* ── APPLY: claim application form ── */}
+          {step==="apply" && applySkill && (<>
+            <div style={S.hdr}>
+              <div>
+                <button onClick={()=>setStep("main")}
+                  style={{display:"flex",alignItems:"center",gap:5,background:"transparent",border:"none",color:"#555",cursor:"pointer",fontSize:12,fontFamily:"inherit",padding:0,marginBottom:10}}>
+                  ← 返回
+                </button>
+                <div style={S.title}>申请认领：{applySkill.name}</div>
+                <div style={S.sub}>
+                  {applySkill.source==="github"
+                    ? "GitHub 来源 · OAuth 验证 repo 所有权，自动通过"
+                    : "ZIP 来源 · 需提交 repo 链接，平台人工审核后释放奖励"}
+                </div>
+              </div>
+            </div>
+            <div style={S.body}>
+              {/* connected identity */}
+              <div style={{display:"flex",gap:10,marginBottom:18}}>
+                {[
+                  {label:"GitHub 账号", value:"@safuskill-dev"},
+                  {label:"钱包地址",     value:"0x168a...c6e6"},
+                ].map(item=>(
+                  <div key={item.label} style={{flex:1,background:"#111",border:"1px solid #1e1e1e",borderRadius:8,padding:"9px 12px"}}>
+                    <div style={{fontSize:10,color:"#333",marginBottom:3}}>{item.label}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#888",fontWeight:500}}>
+                      {item.value}
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* GitHub source: lightweight — just show linked repo, no form */}
+              {applySkill.source==="github" && (
+                <div style={{background:"rgba(34,197,94,.04)",border:"1px solid rgba(34,197,94,.14)",borderRadius:9,padding:"12px 14px",marginBottom:20}}>
+                  <div style={{fontSize:11,color:"#3a7a4a",marginBottom:4}}>已关联仓库</div>
+                  <div style={{fontSize:13,color:"#888",fontFamily:"monospace"}}>
+                    github.com/safuskill-dev/{applySkill.name.toLowerCase().replace(/ /g,"-")}
+                  </div>
+                  <div style={{fontSize:11,color:"#3a7a4a",marginTop:6,display:"flex",alignItems:"center",gap:4}}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    当前 GitHub 账号为该仓库的所有者，认领将自动通过
+                  </div>
+                </div>
+              )}
+
+              {/* ZIP source: full form — repo URL + declarations */}
+              {applySkill.source==="zip" && (<>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:12,fontWeight:500,color:"#777",marginBottom:6}}>
+                    GitHub Repo 链接 <span style={{color:"#d4a017"}}>*</span>
+                  </div>
+                  <input
+                    value={repoUrl}
+                    onChange={e=>setRepoUrl(e.target.value)}
+                    placeholder="https://github.com/your-org/your-skill"
+                    style={{width:"100%",background:"#111",
+                      border:`1px solid ${urlError?"rgba(239,68,68,.45)":urlValid?"rgba(34,197,94,.3)":"#222"}`,
+                      borderRadius:8,padding:"9px 12px",fontSize:13,color:"#e0e0e0",
+                      outline:"none",fontFamily:"inherit",boxSizing:"border-box",transition:"border-color .2s"}}
+                    onFocus={e=>{if(!urlError&&!urlValid)e.currentTarget.style.borderColor="rgba(212,160,23,.35)";}}
+                    onBlur={e=>{e.currentTarget.style.borderColor=urlError?"rgba(239,68,68,.45)":urlValid?"rgba(34,197,94,.3)":"#222";}}
+                  />
+                  {urlError && (
+                    <div style={{marginTop:5,fontSize:11,color:"#ef4444",display:"flex",alignItems:"center",gap:4}}>
+                      ⚠ {urlError}
+                    </div>
+                  )}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:18}}>
+                  {["我是该 Skill 的开发者或维护者","我确认提交的信息真实有效"].map((text,i)=>(
+                    <label key={i}
+                      onClick={()=>setChecks(prev=>{const n=[...prev];n[i]=!n[i];return n;})}
+                      style={{display:"flex",alignItems:"flex-start",gap:9,cursor:"pointer",userSelect:"none"}}>
+                      <div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${checks[i]?"#22c55e":"#2e2e2e"}`,background:checks[i]?"rgba(34,197,94,.12)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,transition:"border-color .15s,background .15s"}}>
+                        {checks[i] && <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2L7.5 2" stroke="#22c55e" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <span style={{fontSize:12,color:"#666",lineHeight:1.5}}>{text}</span>
+                    </label>
+                  ))}
+                </div>
+              </>)}
+
+              <button onClick={submitApply} disabled={!canSubmitApply}
+                style={{width:"100%",padding:"11px",background:canSubmitApply?"linear-gradient(135deg,#d4a017,#c9961a)":"#181818",border:`1px solid ${canSubmitApply?"transparent":"#222"}`,borderRadius:9,fontSize:14,fontWeight:700,color:canSubmitApply?"#000":"#2e2e2e",cursor:canSubmitApply?"pointer":"not-allowed",fontFamily:"inherit",transition:"background .15s,color .15s"}}
+                onMouseOver={e=>{if(canSubmitApply)e.currentTarget.style.opacity=".88";}}
+                onMouseOut={e=>{e.currentTarget.style.opacity="1";}}>
+                {applySkill.source==="github" ? "确认认领" : "提交认领申请"}
+              </button>
+              <div style={{marginTop:8,fontSize:11,color:"#2a2a2a",textAlign:"center"}}>
+                {applySkill.source==="github"
+                  ? "验证通过后开发者奖励立即解锁"
+                  : "平台将在 1–3 个工作日内审核，通过后奖励解锁"}
+              </div>
+            </div>
+          </>)}
+
+    </>);
+
+    if (pageMode) {
+      return <div style={{padding:"28px 36px",flex:1}}>{steps}</div>;
+    }
+    return (
+      <div style={S.overlay} onClick={canClose ? onClose : undefined}>
+        <div style={S.modal} onClick={e=>e.stopPropagation()} className="fade-up">
+          {steps}
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────
+     NAV CONFIG
+  ───────────────────────────────────── */
+  const IconCoin = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6.5" stroke={color} strokeWidth="1.4"/>
+      <path d="M6 8c0 1.1.9 2 2 2s2-.9 2-2-.9-2-2-2" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M8 4.5v1M8 10.5v1" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const IconDownload = ({ size=16, color="currentColor" }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M8 2v8M8 10l-3-3M8 10l3-3" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const NAV_ITEMS = [
+    { key:"dashboard", label:"仪表盘",   Icon: IconGrid     },
+    { key:"skills",    label:"我的技能", Icon: IconBag      },
+    { key:"tokens",    label:"我的代币", Icon: IconRocket   },
+    { key:"rewards",   label:"领取收益", Icon: IconCoin     },
+    { key:"downloads", label:"我的下载", Icon: IconDownload },
+    { key:"proposals", label:"提案",     Icon: IconDoc      },
+    { key:"upload",    label:"上传技能", Icon: IconUpload   },
+    { key:"analytics", label:"数据分析", Icon: IconChart    },
+    { key:"settings",  label:"设置",     Icon: IconGear     },
+  ];
+
+  /* ─────────────────────────────────────
+     MOCK DATA
+  ───────────────────────────────────── */
+  const MOCK_TOKENS = [
+    {
+      id: 1,
+      symbol: "C",
+      name: "C",
+      status: "ACTIVE",
+      skills: 12,
+      chain: "BSC",
+      fee: "1%",
+      date: "2026/4/14",
+      address: "0x7a8d...7777",
+    },
+  ];
+
+  /* ─────────────────────────────────────
+     SIDEBAR
+  ───────────────────────────────────── */
+  function Sidebar({ active, onNav }) {
+    const [hovered, setHovered] = useState(null);
+
+    return (
+      <aside style={{
+        width: 210,
+        flexShrink: 0,
+        background: "#111",
+        borderRight: "1px solid #1e1e1e",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        position: "sticky",
+        top: 0,
+        overflowY: "auto",
+      }}>
+        {/* Logo */}
+        <a href="index.html" style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 9,
+          padding: "22px 20px 18px",
+          borderBottom: "1px solid #1e1e1e",
+          textDecoration: "none",
+          cursor: "pointer",
+        }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: 7,
+            background: "linear-gradient(135deg,#22c55e,#16a34a)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#fff",
+            flexShrink: 0,
+          }}>S</div>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: .3 }}>
+            SafuSkill
+          </span>
+        </a>
+
+        {/* Nav Items */}
+        <nav style={{ padding: "12px 10px", flex: 1 }}>
+          {NAV_ITEMS.map(({ key, label, Icon }) => {
+            const isActive = active === key;
+            const isHov    = hovered === key && !isActive;
+            return (
+              <button
+                key={key}
+                onClick={() => onNav(key)}
+                onMouseEnter={() => setHovered(key)}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 13.5,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "#fff" : isHov ? "#ccc" : "#6b7280",
+                  background: isActive
+                    ? "linear-gradient(135deg,#d4a017,#c9961a)"
+                    : isHov
+                    ? "rgba(255,255,255,.04)"
+                    : "transparent",
+                  transition: "all .15s",
+                  marginBottom: 2,
+                  textAlign: "left",
+                }}
+              >
+                <Icon
+                  size={15}
+                  color={isActive ? "#fff" : isHov ? "#ccc" : "#555"}
+                />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Bottom wallet badge */}
+        <div style={{
+          padding: "14px 12px",
+          borderTop: "1px solid #1e1e1e",
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "#1a1a1a",
+            border: "1px solid #2a2a2a",
+            borderRadius: 10,
+            padding: "8px 12px",
+          }}>
+            <div style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: "#22c55e",
+              flexShrink: 0,
+            }}/>
+            <span style={{ fontSize: 12, color: "#d4a017", fontWeight: 500, letterSpacing: .2 }}>
+              0x168a...c6e6
+            </span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  /* ─────────────────────────────────────
+     TOKEN ROW CARD
+  ───────────────────────────────────── */
+  function TokenCard({ token }) {
+    const [hovered, setHovered] = useState(false);
+
+    return (
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          background: hovered ? "#202020" : "#1a1a1a",
+          border: `1px solid ${hovered ? "#2e2e2e" : "#242424"}`,
+          borderRadius: 10,
+          padding: "16px 20px",
+          cursor: "pointer",
+          transition: "background .15s, border-color .15s",
+        }}
+      >
+        {/* Avatar */}
+        <div style={{
+          width: 42,
+          height: 42,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg,#1f2a1f,#2a3a2a)",
+          border: "1.5px solid #2e2e2e",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 16,
+          fontWeight: 700,
+          color: "#d4a017",
+          flexShrink: 0,
+          letterSpacing: .5,
+        }}>
+          {token.symbol.charAt(0)}
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0, marginLeft: 14 }}>
+          {/* Row 1: symbol + name + status */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 5,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+              ${token.symbol}
+            </span>
+            <span style={{ fontSize: 14, color: "#9ca3af", fontWeight: 400 }}>
+              {token.name}
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#22c55e",
+              background: "rgba(34,197,94,.1)",
+              border: "1px solid rgba(34,197,94,.25)",
+              borderRadius: 5,
+              padding: "1px 7px",
+              letterSpacing: .5,
+            }}>
+              {token.status}
+            </span>
+          </div>
+
+          {/* Row 2: meta */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 12,
+            color: "#555",
+          }}>
+            <span>技能: {token.skills}</span>
+            <Dot/>
+            <span>{token.chain}</span>
+            <Dot/>
+            <span>{token.fee} 税费</span>
+            <Dot/>
+            <span>{token.date}</span>
+          </div>
+        </div>
+
+        {/* Address + link */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          flexShrink: 0,
+          marginLeft: 20,
+        }}>
+          <span style={{
+            fontSize: 12,
+            color: "#555",
+            fontFamily: "monospace",
+          }}>
+            {token.address}
+          </span>
+          <div style={{
+            opacity: hovered ? 1 : 0.4,
+            transition: "opacity .15s",
+            display: "flex",
+            alignItems: "center",
+          }}>
+            <IconExternalLink color={hovered ? "#d4a017" : "#555"}/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const Dot = () => (
+    <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#333", display: "inline-block", flexShrink: 0 }}/>
+  );
+
+  /* ─────────────────────────────────────
+     EMPTY STATE
+  ───────────────────────────────────── */
+  function EmptyState() {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "80px 0",
+        gap: 14,
+      }}>
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: 16,
+          background: "rgba(212,160,23,.08)",
+          border: "1.5px solid rgba(212,160,23,.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <IconRocket size={24} color="#d4a017"/>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#e0e0e0" }}>还没有代币</div>
+        <div style={{ fontSize: 13, color: "#555", textAlign: "center", lineHeight: 1.6 }}>
+          发射您的第一个代币，<br/>让 AI 技能价值流通起来
+        </div>
+        <button style={{
+          marginTop: 4,
+          padding: "10px 22px",
+          background: "linear-gradient(135deg,#d4a017,#c9961a)",
+          border: "none",
+          borderRadius: 10,
+          fontSize: 13,
+          fontWeight: 700,
+          color: "#000",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}>
+          <IconRocket size={13} color="#000"/> 发射代币
+        </button>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────
+     MOCK DOWNLOAD DATA
+     平台在市值达到里程碑后统一空投，用户无需操作
+  ───────────────────────────────────── */
+  const MOCK_DOWNLOADS = [
+    {
+      id: 1, skillName: "Code Review Agent", skillIcon: "🤖", token: "CRVW",
+      downloadDate: "2026/03/12", marketCap: 420000,
+      milestones: [
+        { label:"$1M",  cap:1000000,  status:"pending", airdropDate:null },
+        { label:"$3M",  cap:3000000,  status:"pending", airdropDate:null },
+        { label:"$10M", cap:10000000, status:"pending", airdropDate:null },
+      ],
+    },
+    {
+      id: 2, skillName: "Translation Agent", skillIcon: "🌐", token: "TRAN",
+      downloadDate: "2026/02/28", marketCap: 3600000,
+      milestones: [
+        { label:"$1M",  cap:1000000,  status:"done",    airdropDate:"2026/03/10" },
+        { label:"$3M",  cap:3000000,  status:"pending", airdropDate:null },
+        { label:"$10M", cap:10000000, status:"pending", airdropDate:null },
+      ],
+    },
+    {
+      id: 3, skillName: "Image Gen Agent", skillIcon: "🎨", token: "IMGN",
+      downloadDate: "2026/01/15", marketCap: 10800000,
+      milestones: [
+        { label:"$1M",  cap:1000000,  status:"done", airdropDate:"2026/02/01" },
+        { label:"$3M",  cap:3000000,  status:"done", airdropDate:"2026/03/15" },
+        { label:"$10M", cap:10000000, status:"done", airdropDate:"2026/04/10" },
+      ],
+    },
+  ];
+
+  /* ─────────────────────────────────────
+     DOWNLOADS VIEW  (read-only, platform auto-airdrops)
+  ───────────────────────────────────── */
+  const fmtCap = (n) => {
+    if (n >= 1000000) return `$${(n/1000000).toFixed(n%1000000===0?0:1)}M`;
+    if (n >= 1000)    return `$${(n/1000).toFixed(0)}K`;
+    return `$${n}`;
+  };
+
+  function DownloadCard({ dl }) {
+    const doneCt = dl.milestones.filter(m => m.status === "done").length;
+    return (
+      <div style={{ background:"#161616", border:"1px solid #1d1d1d", borderRadius:11, overflow:"hidden" }}>
+        {/* Header */}
+        <div style={{ padding:"13px 18px", display:"flex", alignItems:"center", gap:11 }}>
+          <div style={{ width:36, height:36, borderRadius:9, flexShrink:0,
+            background:"rgba(255,255,255,.03)", border:"1px solid #1e1e1e",
+            display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>
+            {dl.skillIcon}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:"#d4a017", marginBottom:3 }}>{dl.token}</div>
+            <div style={{ fontSize:11, color:"#333" }}>{dl.downloadDate} 下载 · 最多 3 次空投</div>
+          </div>
+          <div style={{ textAlign:"right", flexShrink:0 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:"#4a4a4a", lineHeight:1, marginBottom:3 }}>
+              {fmtCap(dl.marketCap)}
+            </div>
+          </div>
+        </div>
+        {/* Milestone chips */}
+        <div style={{ padding:"0 18px 13px", display:"flex", gap:7 }}>
+          {dl.milestones.map((m, i) => (
+            <div key={i} style={{
+              flex:1, borderRadius:8, padding:"8px 10px",
+              background: m.status==="done" ? "rgba(34,197,94,.05)" : "#111",
+              border: `1px solid ${m.status==="done" ? "rgba(34,197,94,.14)" : "#1a1a1a"}`,
+            }}>
+              <div style={{ fontSize:11, fontWeight:700, marginBottom:4,
+                color: m.status==="done" ? "#22c55e" : "#2a2a2a" }}>{m.label}</div>
+              {m.status==="done" ? (
+                <div style={{ fontSize:10, color:"#2e7a4a", display:"flex", alignItems:"center", gap:3 }}>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                    <circle cx="4.5" cy="4.5" r="4" fill="#22c55e"/>
+                    <path d="M2 4.5l1.5 1.5L7 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {m.airdropDate}
+                </div>
+              ) : (
+                <div style={{ fontSize:10, color:"#222" }}>待触达</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function AirdropConditionsModal({ onClose }) {
+    const conditions = [
+      {
+        icon: "🔗",
+        title: "下载前完成钱包绑定",
+        desc: "在平台下载 Skill 前，需先绑定您的钱包地址。空投将自动发送至该地址，绑定后不可更改。",
+      },
+      {
+        icon: "📈",
+        title: "代币市值达到里程碑",
+        desc: "每个 Skill 代币设有 $1M、$3M、$10M 三档市值里程碑，市值触达后平台自动触发对应档位空投，无需任何操作。",
+      },
+    ];
+
+    return (
+      <div
+        style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", zIndex:800,
+          display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}
+        onClick={onClose}
+      >
+        <div
+          style={{ background:"#161616", border:"1px solid #222", borderRadius:14,
+            width:"100%", maxWidth:420, boxShadow:"0 20px 56px rgba(0,0,0,.8)", overflow:"hidden" }}
+          onClick={e=>e.stopPropagation()}
+          className="fade-up"
+        >
+          {/* Header */}
+          <div style={{ padding:"20px 22px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:3 }}>空投领取条件</div>
+              <div style={{ fontSize:11, color:"#444" }}>同时满足以下两项条件，方可收到空投</div>
+            </div>
+            <button onClick={onClose}
+              style={{ background:"transparent", border:"none", color:"#444", cursor:"pointer",
+                fontSize:17, lineHeight:1, padding:4, flexShrink:0 }}>✕</button>
+          </div>
+
+          {/* Conditions */}
+          <div style={{ padding:"16px 22px 22px", display:"flex", flexDirection:"column", gap:10 }}>
+            {conditions.map((c, i) => (
+              <div key={i} style={{ display:"flex", gap:13, background:"#111",
+                border:"1px solid #1e1e1e", borderRadius:10, padding:"13px 15px" }}>
+                <div style={{ width:34, height:34, borderRadius:9, flexShrink:0,
+                  background:"rgba(212,160,23,.07)", border:"1px solid rgba(212,160,23,.14)",
+                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:15 }}>
+                  {c.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:600, color:"#d0d0d0", marginBottom:4 }}>{c.title}</div>
+                  <div style={{ fontSize:11, color:"#555", lineHeight:1.65 }}>{c.desc}</div>
+                </div>
+              </div>
+            ))}
+
+            {/* Wick note */}
+            <div style={{ display:"flex", gap:10, background:"rgba(239,68,68,.04)",
+              border:"1px solid rgba(239,68,68,.12)", borderRadius:9, padding:"11px 13px" }}>
+              <span style={{ fontSize:14, flexShrink:0, marginTop:1 }}>⚡</span>
+              <div>
+                <div style={{ fontSize:12, fontWeight:600, color:"#c45", marginBottom:3 }}>插针不计入里程碑</div>
+                <div style={{ fontSize:11, color:"#555", lineHeight:1.65 }}>
+                  短时价格插针不触发空投结算。市值需持续稳定达标，平台将在价格稳定后统一结算并发放。
+                </div>
+              </div>
+            </div>
+
+            {/* Note */}
+            <div style={{ fontSize:11, color:"#2e2e2e", textAlign:"center", lineHeight:1.6 }}>
+              满足条件后由平台统一空投，每个里程碑最多触发一次
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function DownloadsView() {
+    const downloads  = MOCK_DOWNLOADS;
+    const [showInfo, setShowInfo] = useState(false);
+
+    return (
+      <div style={{ padding:"24px 36px", flex:1 }}>
+        {/* Top row: description + info button */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+          <div style={{ fontSize:11, color:"#333", display:"flex", alignItems:"center", gap:6 }}>
+            <span>市值达</span>
+            <span style={{ color:"#484848" }}>$1M · $3M · $10M</span>
+            <span>时，平台自动空投至您的钱包</span>
+          </div>
+          <button
+            onClick={() => setShowInfo(true)}
+            style={{ display:"flex", alignItems:"center", gap:5, marginLeft:4,
+              background:"transparent", border:"1px solid #2a2a2a", borderRadius:6,
+              padding:"3px 10px", fontSize:11, color:"#555", cursor:"pointer",
+              fontFamily:"inherit", transition:"border-color .15s, color .15s", flexShrink:0 }}
+            onMouseOver={e=>{ e.currentTarget.style.borderColor="#d4a017"; e.currentTarget.style.color="#d4a017"; }}
+            onMouseOut={e=>{  e.currentTarget.style.borderColor="#2a2a2a"; e.currentTarget.style.color="#555"; }}
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <circle cx="5.5" cy="5.5" r="5" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M5.5 5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <circle cx="5.5" cy="3.2" r=".7" fill="currentColor"/>
+            </svg>
+            领取条件
+          </button>
+        </div>
+
+        {/* Card list */}
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {downloads.map(dl => <DownloadCard key={dl.id} dl={dl}/>)}
+        </div>
+
+        {/* Conditions modal */}
+        {showInfo && <AirdropConditionsModal onClose={() => setShowInfo(false)}/>}
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────
+     MAIN PAGE
+  ───────────────────────────────────── */
+  function MyTokens() {
+    const [activeNav, setActiveNav] = useState("tokens");
+    const tokens = MOCK_TOKENS;
+
+    const isDownloads = activeNav === "downloads";
+    const isRewards   = activeNav === "rewards";
+    const isTokens    = !isDownloads && !isRewards;
+
+    const PAGE_TITLES = {
+      tokens:    { h1:"我的代币",  sub:`已发射 ${tokens.length} 个代币` },
+      downloads: { h1:"我的下载",  sub:`已下载 ${MOCK_DOWNLOADS.length} 个技能` },
+      rewards:   { h1:"领取收益",  sub:"认领您的开发者收益" },
+    };
+    const { h1, sub } = PAGE_TITLES[activeNav] || PAGE_TITLES.tokens;
+
+    return (
+      <div style={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "#0d0d0d",
+        color: "#e0e0e0",
+      }}>
+        {/* Sidebar */}
+        <Sidebar active={activeNav} onNav={setActiveNav}/>
+
+        {/* Main */}
+        <main style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+        }}>
+          {/* Top bar */}
+          <div style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            padding: "36px 36px 28px",
+            borderBottom: "1px solid #1a1a1a",
+          }}>
+            <div>
+              <h1 style={{ fontSize:26, fontWeight:700, color:"#fff", marginBottom:4, letterSpacing:-.2 }}>
+                {h1}
+              </h1>
+              <p style={{ fontSize:13, color:"#555" }}>{sub}</p>
+            </div>
+
+          </div>
+
+          {/* Content area */}
+          {isDownloads && <DownloadsView/>}
+          {isRewards   && <ClaimModal pageMode={true}/>}
+          {isTokens    && (
+            <div style={{ padding:"28px 36px", flex:1 }}>
+              {tokens.length === 0 ? (
+                <EmptyState/>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <div style={{
+                    display:"flex", alignItems:"center",
+                    padding:"0 20px 10px",
+                    fontSize:11, fontWeight:600, color:"#3a3a3a",
+                    textTransform:"uppercase", letterSpacing:.08,
+                    borderBottom:"1px solid #1a1a1a", marginBottom:4,
+                  }}>
+                    <div style={{ width:42, flexShrink:0, marginRight:14 }}/>
+                    <div style={{ flex:1 }}>代币</div>
+                    <div>合约地址</div>
+                  </div>
+                  {tokens.map(t => <TokenCard key={t.id} token={t}/>)}
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<MyTokens/>);
+</script>
+</body>
+</html>
