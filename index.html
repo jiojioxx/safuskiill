@@ -37,7 +37,13 @@
       background: linear-gradient(90deg, #d4a017, #f0b429);
       transition: width .5s cubic-bezier(.4,0,.2,1);
     }
+    @keyframes dropIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .drop-in { animation: dropIn .18s ease forwards; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+    .notif-dot { animation: pulse 2.2s ease infinite; }
     @keyframes fadeInUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes popIn { 0% { transform:scale(.6); opacity:0; } 70% { transform:scale(1.08); } 100% { transform:scale(1); opacity:1; } }
+    .pop-in { animation: popIn .5s cubic-bezier(.34,1.56,.64,1) forwards; }
     @keyframes fadeOut  { from { opacity:1; transform:translateY(0); }  to { opacity:0; transform:translateY(10px); } }
     .spinner      { width:16px;height:16px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
     .spinner-gold { width:14px;height:14px;border:2px solid rgba(212,160,23,.25);border-top-color:#d4a017;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
@@ -111,6 +117,27 @@
       t3Title: (t) => `${t} 代币已成功发射！`,
       t3Desc: "您的代币已部署至链上，快去分享给社区吧！",
       t3Btn: "查看代币详情 →",
+      /* ── GitHub 认证领取手续费 ── */
+      claimNavBtn: "领取收益",
+      claimTitle: "领取开发者手续费",
+      claimSub: "通过 GitHub 账号验证技能所有权，领取属于您的协议奖励",
+      claimGhBtn: "使用 GitHub 账号继续",
+      claimGhHint: "仅用于验证技能所有权，不会读取或修改您的仓库",
+      claimLoading: "正在连接 GitHub...",
+      claimLoadingSub: "请在弹出的授权窗口中完成确认",
+      claimVerifiedLabel: "身份已验证",
+      claimSkillsTitle: "您的技能收益",
+      claimPending: "待领取",
+      claimEarned: "累计",
+      claimTotalLabel: "待领取总额",
+      claimAllBtn: "一键领取全部",
+      claimProcessing: "链上结算中...",
+      claimSuccess: "领取成功！",
+      claimSuccessSub: "收益已转入钱包，通常 1-2 分钟后到账",
+      claimViewTx: "查看交易记录 →",
+      claimZipNote: "通过 ZIP 上传的技能",
+      claimZipMethod: "使用钱包签名验证所有权",
+      claimDisconnect: "切换账号",
     },
     en: {
       navItems: ["Skill Market","Launchpad","Docs","Developer"],
@@ -169,6 +196,27 @@
       t3Title: (t) => `${t} launched successfully!`,
       t3Desc: "Your token is live on-chain. Share it with your community!",
       t3Btn: "View Token Details →",
+      /* ── GitHub Auth Fee Claiming ── */
+      claimNavBtn: "Claim Rewards",
+      claimTitle: "Claim Developer Fees",
+      claimSub: "Verify skill ownership via GitHub to claim your protocol rewards",
+      claimGhBtn: "Continue with GitHub",
+      claimGhHint: "Used only to verify skill ownership — no repo access or modifications",
+      claimLoading: "Connecting to GitHub...",
+      claimLoadingSub: "Please complete the authorization in the popup window",
+      claimVerifiedLabel: "Identity Verified",
+      claimSkillsTitle: "Your Skill Rewards",
+      claimPending: "Pending",
+      claimEarned: "Earned",
+      claimTotalLabel: "Total Claimable",
+      claimAllBtn: "Claim All",
+      claimProcessing: "Settling on-chain...",
+      claimSuccess: "Claimed!",
+      claimSuccessSub: "Rewards sent to your wallet, usually arrives within 1-2 minutes",
+      claimViewTx: "View Transaction →",
+      claimZipNote: "ZIP-uploaded skills",
+      claimZipMethod: "Verify ownership via wallet signature",
+      claimDisconnect: "Switch Account",
     },
   };
 
@@ -177,14 +225,38 @@
   ───────────────────────────────────────── */
   const S = {
     root: { fontFamily:"'Inter','Segoe UI',sans-serif", background:"#0d0d0d", minHeight:"100vh", color:"#e0e0e0" },
-    nav: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 32px", height:64, background:"#111", borderBottom:"1px solid #222", position:"sticky", top:0, zIndex:200 },
-    logo: { display:"flex", alignItems:"center", gap:8, fontWeight:700, fontSize:18, color:"#fff", letterSpacing:.5 },
-    logoIcon: { width:28, height:28, borderRadius:6, background:"linear-gradient(135deg,#22c55e,#16a34a)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, color:"#fff", fontWeight:800 },
-    navLinks: { display:"flex", gap:4 },
-    navLink: { padding:"6px 16px", borderRadius:8, fontSize:14, color:"#9ca3af", cursor:"pointer", background:"transparent", border:"none", fontFamily:"inherit", transition:"color .2s,background .2s" },
-    navLinkActive: { color:"#d4a017", background:"rgba(212,160,23,.12)", fontWeight:600 },
-    navRight: { display:"flex", alignItems:"center", gap:12 },
-    langBtn: { background:"#1a1a1a", border:"1px solid #333", borderRadius:8, padding:"4px 12px", fontSize:13, color:"#ccc", cursor:"pointer", fontFamily:"inherit" },
+    nav: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 24px", height:56, background:"#111", borderBottom:"1px solid #1e1e1e", position:"sticky", top:0, zIndex:200 },
+    logo: { display:"flex", alignItems:"center", gap:8, fontWeight:700, fontSize:16, color:"#fff", letterSpacing:.3, flexShrink:0, cursor:"pointer" },
+    navLinks: { display:"flex", gap:2, position:"absolute", left:"50%", transform:"translateX(-50%)" },
+    navLink: { padding:"5px 16px", borderRadius:7, fontSize:14, color:"#6b7280", cursor:"pointer", background:"transparent", border:"none", borderBottom:"2px solid transparent", fontFamily:"inherit", transition:"color .15s,background .15s", marginBottom:-1 },
+    navLinkActive: { color:"#fff", background:"rgba(255,255,255,.07)", fontWeight:600, borderBottomColor:"#d4a017" },
+    navRight: { display:"flex", alignItems:"center", gap:4, flexShrink:0 },
+    navDivider: { width:1, height:18, background:"#2a2a2a", margin:"0 4px" },
+    /* lang */
+    langBtn: { display:"flex", alignItems:"center", gap:5, padding:"5px 10px", background:"transparent", border:"none", borderRadius:7, cursor:"pointer", fontFamily:"inherit", fontSize:13, color:"#9ca3af", transition:"color .15s,background .15s" },
+    langBtnHov: { color:"#d1d5db", background:"rgba(255,255,255,.05)" },
+    /* bell */
+    bellWrap: { position:"relative", display:"flex", alignItems:"center", justifyContent:"center", width:34, height:34, borderRadius:8, border:"none", cursor:"pointer", transition:"background .15s" },
+    /* wallet pill */
+    walletPill: { display:"flex", alignItems:"center", gap:8, padding:"5px 12px 5px 6px", background:"#1a1a1a", border:"1px solid #252525", borderRadius:20, cursor:"pointer", fontFamily:"inherit", transition:"background .15s,border-color .15s" },
+    walletPillOpen: { background:"#222", borderColor:"#333" },
+    walletAvatar: { width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#d4a017,#c9961a)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, color:"#000", flexShrink:0 },
+    walletAddr: { fontSize:13, color:"#d4a017", fontWeight:500, letterSpacing:.2 },
+    /* wallet dropdown */
+    walletDrop: { position:"absolute", top:"calc(100% + 8px)", right:0, width:224, background:"#161616", border:"1px solid #222", borderRadius:12, boxShadow:"0 16px 48px rgba(0,0,0,.65)", overflow:"hidden", zIndex:400 },
+    dropAddrBox: { padding:"14px 16px 12px", borderBottom:"1px solid #1e1e1e" },
+    dropLabel: { fontSize:11, color:"#3a3a3a", marginBottom:6, textTransform:"uppercase", letterSpacing:.08, fontWeight:600 },
+    dropAddr: { display:"flex", alignItems:"center", justifyContent:"space-between" },
+    dropAddrText: { fontSize:13, color:"#d4a017", fontFamily:"monospace", fontWeight:500 },
+    dropBalRow: { marginTop:8, display:"flex", alignItems:"center", gap:6 },
+    dropBalDot: { width:6, height:6, borderRadius:"50%", background:"#22c55e", flexShrink:0 },
+    dropMenuSection: { padding:"6px 8px" },
+    dropMenuItem: { display:"flex", alignItems:"center", gap:10, padding:"9px 10px", borderRadius:8, cursor:"pointer", textDecoration:"none", transition:"background .12s", background:"transparent" },
+    dropMenuIcon: (hl) => ({ width:28, height:28, borderRadius:7, background: hl?"rgba(212,160,23,.1)":"rgba(255,255,255,.04)", border:`1px solid ${hl?"rgba(212,160,23,.2)":"#222"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }),
+    dropMenuLabel: (hl) => ({ fontSize:13, fontWeight: hl?600:400, color: hl?"#d4a017":"#9ca3af" }),
+    dropDivider: { borderTop:"1px solid #1e1e1e", padding:"6px 8px 8px" },
+    dropLogoutBtn: { width:"100%", display:"flex", alignItems:"center", gap:10, padding:"9px 10px", borderRadius:8, border:"none", background:"transparent", cursor:"pointer", fontFamily:"inherit", transition:"background .12s" },
+    /* legacy – kept so nothing else breaks */
     langBtnActive: { background:"rgba(212,160,23,.12)", borderColor:"rgba(212,160,23,.3)", color:"#d4a017" },
     bellBtn: { background:"transparent", border:"none", cursor:"pointer", fontSize:18, color:"#9ca3af", padding:4, lineHeight:1 },
     walletBadge: { background:"#1a1a1a", border:"1px solid #333", borderRadius:20, padding:"5px 14px", fontSize:13, color:"#d4a017", display:"flex", alignItems:"center", gap:6, fontWeight:500 },
@@ -263,11 +335,115 @@
     toastTitle: { fontSize:13, fontWeight:600, color:"#e0e0e0", marginBottom:4 },
     toastDesc: { fontSize:12, color:"#6b7280", lineHeight:1.5 },
     toastViewBtn: { marginTop:10, background:"rgba(212,160,23,.15)", border:"1px solid rgba(212,160,23,.3)", borderRadius:6, padding:"5px 12px", fontSize:12, fontWeight:600, color:"#d4a017", cursor:"pointer", fontFamily:"inherit" },
+    /* ── Claim Rewards Modal ── */
+    claimNavBtn: { background:"rgba(34,197,94,.12)", border:"1px solid rgba(34,197,94,.25)", borderRadius:20, padding:"5px 14px", fontSize:13, color:"#22c55e", cursor:"pointer", fontFamily:"inherit", fontWeight:600, display:"flex", alignItems:"center", gap:6, transition:"all .2s" },
+    claimOverlay: { position:"fixed", inset:0, background:"rgba(0,0,0,.78)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", padding:24 },
+    claimModal: { background:"#1a1a1a", borderRadius:16, border:"1px solid #2a2a2a", width:"100%", maxWidth:520, boxShadow:"0 24px 64px rgba(0,0,0,.7)", overflow:"hidden" },
+    claimHeader: { padding:"28px 28px 0", display:"flex", justifyContent:"space-between", alignItems:"flex-start" },
+    claimTitle: { fontSize:20, fontWeight:700, color:"#fff", marginBottom:6 },
+    claimSub: { fontSize:13, color:"#6b7280", lineHeight:1.6 },
+    claimBody: { padding:"24px 28px 28px" },
+    /* idle step */
+    ghAuthBtn: { width:"100%", padding:"14px 20px", background:"#24292e", border:"1px solid #444", borderRadius:12, fontSize:15, fontWeight:600, color:"#fff", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:10, transition:"background .2s, border-color .2s" },
+    ghHint: { marginTop:12, fontSize:11, color:"#444", textAlign:"center", lineHeight:1.6, display:"flex", alignItems:"center", justifyContent:"center", gap:4 },
+    /* loading step */
+    claimLoadingWrap: { padding:"32px 0", display:"flex", flexDirection:"column", alignItems:"center", gap:16 },
+    claimLoadingTitle: { fontSize:15, fontWeight:600, color:"#e0e0e0" },
+    claimLoadingSub: { fontSize:12, color:"#555", textAlign:"center" },
+    /* verified step */
+    ghProfileBox: { display:"flex", alignItems:"center", gap:12, background:"rgba(34,197,94,.06)", border:"1px solid rgba(34,197,94,.2)", borderRadius:10, padding:"12px 16px", marginBottom:20 },
+    ghAvatar: { width:40, height:40, borderRadius:"50%", background:"linear-gradient(135deg,#24292e,#444)", border:"2px solid rgba(34,197,94,.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0, overflow:"hidden" },
+    ghName: { fontSize:14, fontWeight:600, color:"#e0e0e0" },
+    ghVerifiedBadge: { fontSize:11, color:"#22c55e", fontWeight:600, display:"flex", alignItems:"center", gap:4, marginTop:2 },
+    /* skill reward rows */
+    skillsTitle: { fontSize:13, fontWeight:600, color:"#9ca3af", marginBottom:12, textTransform:"uppercase", letterSpacing:.06 },
+    rewardRow: { display:"flex", alignItems:"center", gap:12, background:"#141414", border:"1px solid #222", borderRadius:10, padding:"12px 14px", marginBottom:8 },
+    rewardIcon: { width:34, height:34, borderRadius:8, background:"rgba(212,160,23,.1)", border:"1px solid rgba(212,160,23,.18)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, flexShrink:0 },
+    rewardInfo: { flex:1, minWidth:0 },
+    rewardName: { fontSize:13, fontWeight:500, color:"#e0e0e0", marginBottom:2 },
+    rewardMeta: { fontSize:11, color:"#555", display:"flex", gap:8 },
+    rewardPending: { fontSize:13, fontWeight:700, color:"#22c55e", flexShrink:0 },
+    /* zip-ownership badge */
+    zipBadge: { display:"inline-flex", alignItems:"center", gap:4, background:"rgba(212,160,23,.08)", border:"1px solid rgba(212,160,23,.2)", borderRadius:5, padding:"1px 6px", fontSize:10, color:"#d4a017", fontWeight:600 },
+    /* total row */
+    totalRow: { display:"flex", alignItems:"center", justifyContent:"space-between", background:"#111", border:"1px solid #2a2a2a", borderRadius:10, padding:"12px 16px", marginTop:16, marginBottom:20 },
+    totalLabel: { fontSize:13, color:"#6b7280" },
+    totalValue: { fontSize:18, fontWeight:700, color:"#22c55e" },
+    /* claim button */
+    claimBtn: { width:"100%", padding:"15px", background:"linear-gradient(135deg,#22c55e,#16a34a)", border:"none", borderRadius:12, fontSize:15, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
+    /* success step */
+    claimSuccessWrap: { padding:"32px 0 8px", display:"flex", flexDirection:"column", alignItems:"center", gap:14 },
+    claimSuccessIcon: { width:56, height:56, borderRadius:"50%", background:"rgba(34,197,94,.12)", border:"2px solid rgba(34,197,94,.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 },
+    claimSuccessTitle: { fontSize:20, fontWeight:700, color:"#22c55e" },
+    claimSuccessSub: { fontSize:13, color:"#6b7280", textAlign:"center", lineHeight:1.6 },
+    claimTxBtn: { marginTop:4, background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", borderRadius:8, padding:"8px 18px", fontSize:12, fontWeight:600, color:"#22c55e", cursor:"pointer", fontFamily:"inherit" },
   };
 
   /* ─────────────────────────────────────────
      ICONS
   ───────────────────────────────────────── */
+  /* ── Nav icons ── */
+  const NavLogoIcon = () => (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect width="22" height="22" rx="6" fill="url(#navLg)"/>
+      <defs><linearGradient id="navLg" x1="0" y1="0" x2="22" y2="22"><stop stopColor="#4ade80"/><stop offset="1" stopColor="#16a34a"/></linearGradient></defs>
+      <path d="M14.5 8H10a2 2 0 000 4h2a2 2 0 010 4H7.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="14.5" cy="8" r="1" fill="#fff"/><circle cx="7.5" cy="16" r="1" fill="#fff"/>
+    </svg>
+  );
+  const NavGlobeIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="5.5" stroke="#9ca3af" strokeWidth="1.3"/>
+      <path d="M7 1.5C7 1.5 5 4 5 7s2 5.5 2 5.5M7 1.5C7 1.5 9 4 9 7s-2 5.5-2 5.5" stroke="#9ca3af" strokeWidth="1.3"/>
+      <path d="M1.5 7h11" stroke="#9ca3af" strokeWidth="1.3"/>
+    </svg>
+  );
+  const NavBellIcon = ({ color="#6b7280" }) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5a5 5 0 015 5v2.5l1 2H2l1-2V6.5a5 5 0 015-5z" stroke={color} strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M6.5 13a1.5 1.5 0 003 0" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+  const NavChevron = ({ size=9, color="#6b7280" }) => (
+    <svg width={size} height={size} viewBox="0 0 10 10" fill="none">
+      <path d="M2 3.5l3 3 3-3" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  const NavIconToken = ({ size=13, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="5.5" stroke={color} strokeWidth="1.3"/>
+      <path d="M9.5 5H6a1.5 1.5 0 000 3h1.5a1.5 1.5 0 010 3H4.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+  const NavIconSkill = ({ size=13, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <rect x="1" y="1" width="12" height="9" rx="2" stroke={color} strokeWidth="1.3"/>
+      <path d="M4 13h6M7 10v3" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+  const NavIconDash = ({ size=13, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <rect x="1" y="1" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+      <rect x="8" y="1" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+      <rect x="1" y="8" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+      <rect x="8" y="8" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+    </svg>
+  );
+  const NavIconLogout = ({ size=13, color="#ef4444" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <path d="M5 2H2.5A1.5 1.5 0 001 3.5v7A1.5 1.5 0 002.5 12H5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M9.5 4.5L13 7l-3.5 2.5M13 7H5" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  const NavIconCopy = ({ done=false }) => done
+    ? <span style={{fontSize:12,color:"#22c55e"}}>✓</span>
+    : (
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <rect x="4.5" y="4.5" width="7" height="7" rx="1.5" stroke="#555" strokeWidth="1.2"/>
+        <path d="M3 8.5H2A1.5 1.5 0 01.5 7V2A1.5 1.5 0 012 .5h5A1.5 1.5 0 018.5 2v1" stroke="#555" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    );
+
   const SearchIcon = () => (
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
       <circle cx="6.5" cy="6.5" r="5" stroke="#666" strokeWidth="1.5"/>
@@ -495,6 +671,192 @@
   }
 
   /* ─────────────────────────────────────────
+     CLAIM FEES MODAL
+  ───────────────────────────────────────── */
+  const MOCK_REWARDS = [
+    { id:1, name:"Code Review Agent",      icon:"🤖", source:"github", pending:"0.0089 BNB", earned:"0.0234 BNB" },
+    { id:2, name:"Data Analysis Agent",    icon:"📊", source:"github", pending:"0.0043 BNB", earned:"0.0156 BNB" },
+    { id:3, name:"Translation Agent v2",   icon:"🌐", source:"zip",    pending:"0.0021 BNB", earned:"0.0078 BNB" },
+  ];
+  const TOTAL_PENDING = "0.0153 BNB";
+  const MOCK_GH_USER  = { login:"safuskill-dev", avatar:"🐙" };
+
+  function ClaimFeesModal({ onClose, t }) {
+    const [step, setStep] = useState("idle");
+    // idle → loading → verified → claiming → claimed
+
+    const handleGhAuth = () => {
+      setStep("loading");
+      setTimeout(() => setStep("verified"), 2400);
+    };
+    const handleClaim = () => {
+      setStep("claiming");
+      setTimeout(() => setStep("claimed"), 2200);
+    };
+
+    const canClose = step !== "loading" && step !== "claiming";
+
+    return (
+      <div style={S.claimOverlay} onClick={canClose ? onClose : undefined}>
+        <div style={S.claimModal} onClick={e => e.stopPropagation()}>
+
+          {/* ── Header ── */}
+          <div style={S.claimHeader}>
+            <div>
+              <div style={S.claimTitle}>{t.claimTitle}</div>
+              <div style={S.claimSub}>{t.claimSub}</div>
+            </div>
+            {canClose && <CloseBtn onClick={onClose}/>}
+          </div>
+
+          {/* ── Body ── */}
+          <div style={S.claimBody}>
+
+            {/* IDLE — GitHub connect */}
+            {step === "idle" && (<>
+              <div style={{marginBottom:20, background:"#141414", borderRadius:12, border:"1px solid #222", padding:"20px 20px 16px"}}>
+                {/* Steps preview */}
+                <div style={{display:"flex", gap:0, marginBottom:18}}>
+                  {[
+                    { icon:"🔐", label: t.lang === "en" ? "Connect GitHub" : "连接 GitHub" },
+                    { icon:"✅", label: t.lang === "en" ? "Verify Ownership" : "验证所有权" },
+                    { icon:"💰", label: t.lang === "en" ? "Claim Rewards" : "领取收益" },
+                  ].map((s, i, arr) => (
+                    <React.Fragment key={i}>
+                      <div style={{flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:6}}>
+                        <div style={{width:34, height:34, borderRadius:"50%", background:"rgba(34,197,94,.08)", border:"1.5px solid rgba(34,197,94,.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14}}>{s.icon}</div>
+                        <div style={{fontSize:10, color:"#555", textAlign:"center", fontWeight:500}}>{s.label}</div>
+                      </div>
+                      {i < arr.length - 1 && <div style={{width:32, height:2, background:"#222", alignSelf:"center", marginBottom:18, flexShrink:0}}/>}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                style={S.ghAuthBtn}
+                onClick={handleGhAuth}
+                onMouseOver={e => { e.currentTarget.style.background="#2d3339"; e.currentTarget.style.borderColor="#555"; }}
+                onMouseOut={e  => { e.currentTarget.style.background="#24292e"; e.currentTarget.style.borderColor="#444"; }}
+              >
+                <GitHubIcon color="#fff" size={18}/>
+                {t.claimGhBtn}
+              </button>
+
+              <div style={S.ghHint}>
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <rect x="1.5" y="4.5" width="8" height="5.5" rx="1.5" stroke="#555" strokeWidth="1.1"/>
+                  <path d="M3 4.5V3a2.5 2.5 0 015 0v1.5" stroke="#555" strokeWidth="1.1" strokeLinecap="round"/>
+                </svg>
+                {t.claimGhHint}
+              </div>
+
+              {/* ZIP alternative */}
+              <div style={{marginTop:16, padding:"12px 14px", background:"rgba(212,160,23,.04)", border:"1px dashed rgba(212,160,23,.18)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+                <div>
+                  <div style={{fontSize:12, color:"#6b7280", marginBottom:3}}>{t.claimZipNote}</div>
+                  <div style={{fontSize:11, color:"#444"}}>{t.claimZipMethod}</div>
+                </div>
+                <button
+                  style={{background:"rgba(212,160,23,.1)", border:"1px solid rgba(212,160,23,.2)", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, color:"#d4a017", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", marginLeft:12}}
+                  onClick={() => alert("钱包签名验证功能即将上线")}
+                >
+                  📁 ZIP →
+                </button>
+              </div>
+            </>)}
+
+            {/* LOADING */}
+            {step === "loading" && (
+              <div style={S.claimLoadingWrap}>
+                <div style={{width:56, height:56, borderRadius:"50%", background:"#1f1f1f", border:"2px solid #333", display:"flex", alignItems:"center", justifyContent:"center"}}>
+                  <div className="spinner-gold" style={{width:22, height:22, borderWidth:2.5}}/>
+                </div>
+                <div style={S.claimLoadingTitle}>{t.claimLoading}</div>
+                <div style={S.claimLoadingSub}>{t.claimLoadingSub}</div>
+              </div>
+            )}
+
+            {/* VERIFIED — show rewards */}
+            {(step === "verified" || step === "claiming") && (<>
+              {/* GitHub profile badge */}
+              <div style={S.ghProfileBox}>
+                <div style={S.ghAvatar}>{MOCK_GH_USER.avatar}</div>
+                <div style={{flex:1}}>
+                  <div style={S.ghName}>@{MOCK_GH_USER.login}</div>
+                  <div style={S.ghVerifiedBadge}>
+                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                      <circle cx="5.5" cy="5.5" r="5" fill="#22c55e"/>
+                      <path d="M3 5.5l1.8 1.8L8 3.5" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {t.claimVerifiedLabel}
+                  </div>
+                </div>
+                <button
+                  style={{background:"transparent", border:"1px solid #333", borderRadius:6, padding:"4px 10px", fontSize:11, color:"#555", cursor:"pointer", fontFamily:"inherit"}}
+                  onClick={() => setStep("idle")}
+                >{t.claimDisconnect}</button>
+              </div>
+
+              {/* Skill reward rows */}
+              <div style={S.skillsTitle}>{t.claimSkillsTitle}</div>
+              {MOCK_REWARDS.map(r => (
+                <div key={r.id} style={S.rewardRow}>
+                  <div style={S.rewardIcon}>{r.icon}</div>
+                  <div style={S.rewardInfo}>
+                    <div style={S.rewardName}>{r.name}</div>
+                    <div style={S.rewardMeta}>
+                      <span>{t.claimEarned} {r.earned}</span>
+                      {r.source === "zip" && (
+                        <span style={S.zipBadge}>📁 ZIP</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={S.rewardPending}>+{r.pending}</div>
+                </div>
+              ))}
+
+              {/* Total */}
+              <div style={S.totalRow}>
+                <span style={S.totalLabel}>{t.claimTotalLabel}</span>
+                <span style={S.totalValue}>{TOTAL_PENDING}</span>
+              </div>
+
+              {/* Claim button */}
+              <button
+                style={{
+                  ...S.claimBtn,
+                  cursor: step === "claiming" ? "not-allowed" : "pointer",
+                  opacity: step === "claiming" ? .85 : 1,
+                }}
+                onClick={step === "verified" ? handleClaim : undefined}
+                onMouseOver={e => { if(step==="verified") e.currentTarget.style.opacity=".88"; }}
+                onMouseOut={e  => { e.currentTarget.style.opacity="1"; }}
+              >
+                {step === "claiming"
+                  ? <><div className="spinner" style={{borderTopColor:"#fff",borderColor:"rgba(255,255,255,.25)"}}/>{t.claimProcessing}</>
+                  : <>💰 {t.claimAllBtn} {TOTAL_PENDING}</>
+                }
+              </button>
+            </>)}
+
+            {/* CLAIMED — success */}
+            {step === "claimed" && (
+              <div style={S.claimSuccessWrap}>
+                <div style={S.claimSuccessIcon} className="pop-in">🎉</div>
+                <div style={S.claimSuccessTitle}>{t.claimSuccess}</div>
+                <div style={S.claimSuccessSub}>{t.claimSuccessSub}</div>
+                <button style={S.claimTxBtn} onClick={onClose}>{t.claimViewTx}</button>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────────
      MAIN PAGE
   ───────────────────────────────────────── */
   function LaunchToken() {
@@ -508,9 +870,30 @@
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showToast, setShowToast]     = useState(false);
+    const [showClaimModal, setShowClaimModal] = useState(false);
     const [feeOpen, setFeeOpen]         = useState(false);
     const [tickerVal, setTickerVal]     = useState("");
-    const fileRef = useRef();
+    const [walletOpen, setWalletOpen]   = useState(false);
+    const [langHov, setLangHov]         = useState(false);
+    const [bellHov, setBellHov]         = useState(false);
+    const [copiedAddr, setCopiedAddr]   = useState(false);
+    const [navHov, setNavHov]           = useState(null);
+    const fileRef    = useRef();
+    const walletRef  = useRef();
+
+    useEffect(() => {
+      const handler = (e) => {
+        if (walletRef.current && !walletRef.current.contains(e.target)) setWalletOpen(false);
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const copyAddr = () => {
+      navigator.clipboard?.writeText("0x168a...c6e6").catch(()=>{});
+      setCopiedAddr(true);
+      setTimeout(() => setCopiedAddr(false), 1500);
+    };
 
     const t = T[lang];
     const effectiveTicker = tickerVal.trim() || "JIOJIO";
@@ -528,18 +911,116 @@
       <div style={S.root}>
         {/* NAV */}
         <nav style={S.nav}>
-          <div style={S.logo}><div style={S.logoIcon}>S</div>SafuSkill</div>
-          <div style={S.navLinks}>
-            {t.navItems.map((item,i) => (
-              <button key={i} style={activeNavIdx===i?{...S.navLink,...S.navLinkActive}:S.navLink} onClick={()=>setActiveNavIdx(i)}>{item}</button>
-            ))}
+          {/* Left: Logo + nav links together */}
+          <div style={{display:"flex",alignItems:"center",gap:0}}>
+            <div style={S.logo}>
+              <NavLogoIcon/>
+              SafuSkill
+            </div>
+            <div style={{width:1,height:18,background:"#2a2a2a",margin:"0 16px"}}/>
+            <div style={{display:"flex",gap:2}}>
+              {t.navItems.map((item,i) => {
+                const isActive = activeNavIdx===i;
+                const isHov    = navHov===i && !isActive;
+                return (
+                  <button key={i}
+                    style={{
+                      ...S.navLink,
+                      ...(isActive ? S.navLinkActive : {}),
+                      ...(isHov ? {color:"#d1d5db",background:"rgba(255,255,255,.04)"} : {}),
+                    }}
+                    onClick={()=>setActiveNavIdx(i)}
+                    onMouseEnter={()=>setNavHov(i)}
+                    onMouseLeave={()=>setNavHov(null)}
+                  >{item}</button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Right controls */}
           <div style={S.navRight}>
-            <button style={{...S.langBtn,...S.langBtnActive}} onClick={()=>setLang(l=>l==="zh"?"en":"zh")}>
-              {lang==="zh"?"中文 ▾":"English ▾"}
+            {/* Language */}
+            <button
+              style={{...S.langBtn,...(langHov?S.langBtnHov:{})}}
+              onClick={()=>setLang(l=>l==="zh"?"en":"zh")}
+              onMouseEnter={()=>setLangHov(true)}
+              onMouseLeave={()=>setLangHov(false)}
+            >
+              <NavGlobeIcon/>
+              <span>{lang==="zh"?"中文":"English"}</span>
+              <NavChevron/>
             </button>
-            <button style={S.bellBtn}>🔔</button>
-            <div style={S.walletBadge}><div style={S.walletDot}/>0x168a...c6e6</div>
+
+            {/* Bell */}
+            <button
+              style={{...S.bellWrap, background:bellHov?"rgba(255,255,255,.06)":"transparent"}}
+              onMouseEnter={()=>setBellHov(true)}
+              onMouseLeave={()=>setBellHov(false)}
+            >
+              <NavBellIcon color={bellHov?"#d1d5db":"#6b7280"}/>
+              <span className="notif-dot" style={{position:"absolute",top:7,right:7,width:6,height:6,borderRadius:"50%",background:"#ef4444",border:"1.5px solid #111"}}/>
+            </button>
+
+            <div style={S.navDivider}/>
+
+            {/* Wallet pill + dropdown */}
+            <div ref={walletRef} style={{position:"relative"}}>
+              <button
+                onClick={()=>setWalletOpen(o=>!o)}
+                style={{...S.walletPill,...(walletOpen?S.walletPillOpen:{})}}
+              >
+                <div style={S.walletAvatar}>0x</div>
+                <span style={S.walletAddr}>0x168a...c6e6</span>
+                <NavChevron/>
+              </button>
+
+              {walletOpen && (
+                <div className="drop-in" style={S.walletDrop}>
+                  {/* Address header */}
+                  <div style={S.dropAddrBox}>
+                    <div style={S.dropLabel}>{lang==="zh"?"已连接钱包":"Connected Wallet"}</div>
+                    <div style={S.dropAddr}>
+                      <span style={S.dropAddrText}>0x168a...c6e6</span>
+                      <button onClick={copyAddr} style={{background:"transparent",border:"none",cursor:"pointer",padding:4,borderRadius:5,display:"flex",alignItems:"center"}}>
+                        <NavIconCopy done={copiedAddr}/>
+                      </button>
+                    </div>
+                    <div style={S.dropBalRow}>
+                      <div style={S.dropBalDot}/>
+                      <span style={{fontSize:12,color:"#555"}}>{lang==="zh"?"余额":"Balance"}</span>
+                      <span style={{fontSize:12,fontWeight:600,color:"#e0e0e0",marginLeft:"auto"}}>0.8432 <span style={{color:"#d4a017"}}>BNB</span></span>
+                    </div>
+                  </div>
+
+                  {/* Menu: 我的技能 only */}
+                  <div style={S.dropMenuSection}>
+                    <a href="MyTokens.html"
+                      onClick={()=>setWalletOpen(false)}
+                      style={S.dropMenuItem}
+                      onMouseEnter={e=>{ e.currentTarget.style.background="rgba(255,255,255,.04)"; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background="transparent"; }}
+                    >
+                      <div style={S.dropMenuIcon(false)}><NavIconSkill size={13} color="#6b7280"/></div>
+                      <span style={S.dropMenuLabel(false)}>{lang==="zh"?"我的技能":"My Skills"}</span>
+                    </a>
+                  </div>
+
+                  {/* Disconnect */}
+                  <div style={S.dropDivider}>
+                    <button style={S.dropLogoutBtn}
+                      onMouseEnter={e=>{ e.currentTarget.style.background="rgba(239,68,68,.06)"; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background="transparent"; }}
+                    >
+                      <div style={{width:28,height:28,borderRadius:7,background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <NavIconLogout/>
+                      </div>
+                      <span style={{fontSize:13,color:"#ef4444"}}>{lang==="zh"?"断开连接":"Disconnect"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </nav>
 
@@ -796,6 +1277,7 @@
             t={t}
           />
         )}
+        {showClaimModal && <ClaimFeesModal onClose={()=>setShowClaimModal(false)} t={t}/>}
         {showToast && <Toast ticker={effectiveTicker} onDone={()=>setShowToast(false)} t={t}/>}
       </div>
     );
