@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SafuSkill — Navbar</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0d0d; font-family: 'Inter','Segoe UI',sans-serif; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .drop-in { animation: dropIn .18s ease forwards; }
+
+    /* notification dot pulse */
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: .5; }
+    }
+    .notif-dot { animation: pulse 2s ease infinite; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { useState, useRef, useEffect } = React;
+
+  /* ─────────────────────────────────────
+     ICONS
+  ───────────────────────────────────── */
+  const LogoIcon = () => (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect width="22" height="22" rx="6" fill="url(#lg)"/>
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="22" y2="22">
+          <stop stopColor="#4ade80"/>
+          <stop offset="1" stopColor="#16a34a"/>
+        </linearGradient>
+      </defs>
+      <path d="M14.5 8H10a2 2 0 000 4h2a2 2 0 010 4H7.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="14.5" cy="8" r="1" fill="#fff"/>
+      <circle cx="7.5" cy="16" r="1" fill="#fff"/>
+    </svg>
+  );
+
+  const GlobeIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="5.5" stroke="#9ca3af" strokeWidth="1.3"/>
+      <path d="M7 1.5C7 1.5 5 4 5 7s2 5.5 2 5.5M7 1.5C7 1.5 9 4 9 7s-2 5.5-2 5.5" stroke="#9ca3af" strokeWidth="1.3"/>
+      <path d="M1.5 7h11" stroke="#9ca3af" strokeWidth="1.3"/>
+    </svg>
+  );
+
+  const BellIcon = ({ color="#9ca3af" }) => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5a5 5 0 015 5v2.5l1 2H2l1-2V6.5a5 5 0 015-5z" stroke={color} strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M6.5 13a1.5 1.5 0 003 0" stroke={color} strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const ChevronDown = ({ size=10, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 10 10" fill="none">
+      <path d="M2 3.5l3 3 3-3" stroke={color} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const IconToken = ({ size=14, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="5.5" stroke={color} strokeWidth="1.3"/>
+      <path d="M9.5 5H6a1.5 1.5 0 000 3h1.5a1.5 1.5 0 010 3H4.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const IconSkill = ({ size=14, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <rect x="1" y="1" width="12" height="9" rx="2" stroke={color} strokeWidth="1.3"/>
+      <path d="M4 13h6M7 10v3" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const IconDash = ({ size=14, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <rect x="1" y="1" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+      <rect x="8" y="1" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+      <rect x="1" y="8" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+      <rect x="8" y="8" width="5" height="5" rx="1.2" stroke={color} strokeWidth="1.3"/>
+    </svg>
+  );
+
+  const IconLogout = ({ size=14, color="#9ca3af" }) => (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+      <path d="M5 2H2.5A1.5 1.5 0 001 3.5v7A1.5 1.5 0 002.5 12H5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M9.5 4.5L13 7l-3.5 2.5M13 7H5" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const IconCopy = ({ size=13, color="#555" }) => (
+    <svg width={size} height={size} viewBox="0 0 13 13" fill="none">
+      <rect x="4.5" y="4.5" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.2"/>
+      <path d="M3 8.5H2A1.5 1.5 0 01.5 7V2A1.5 1.5 0 012 .5h5A1.5 1.5 0 018.5 2v1" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+
+  /* ─────────────────────────────────────
+     NAV ITEMS
+  ───────────────────────────────────── */
+  const NAV_ITEMS = [
+    { key:"market",    zh:"技能市场", en:"Skill Market" },
+    { key:"launchpad", zh:"发射台",   en:"Launchpad"    },
+    { key:"docs",      zh:"文档",     en:"Docs"         },
+    { key:"dev",       zh:"开发者",   en:"Developer"    },
+  ];
+
+  /* ─────────────────────────────────────
+     WALLET DROPDOWN MENU ITEMS
+  ───────────────────────────────────── */
+  const WALLET_MENU = [
+    { key:"dashboard", zh:"仪表盘",  en:"Dashboard",  Icon: IconDash,   href: null },
+    { key:"skills",    zh:"我的技能", en:"My Skills",  Icon: IconSkill,  href: null },
+    { key:"tokens",    zh:"我的代币", en:"My Tokens",  Icon: IconToken,  href: "MyTokens.html", highlight: true },
+  ];
+
+  /* ─────────────────────────────────────
+     NAVBAR COMPONENT
+  ───────────────────────────────────── */
+  function Navbar({ lang, onLangToggle, activeNav, onNav }) {
+    const [walletOpen,  setWalletOpen]  = useState(false);
+    const [bellHov,     setBellHov]     = useState(false);
+    const [langHov,     setLangHov]     = useState(false);
+    const [hovItem,     setHovItem]     = useState(null);
+    const [copiedAddr,  setCopiedAddr]  = useState(false);
+
+    const walletRef = useRef();
+
+    // Close dropdown on outside click
+    useEffect(() => {
+      const handler = (e) => {
+        if (walletRef.current && !walletRef.current.contains(e.target)) {
+          setWalletOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const copyAddr = () => {
+      navigator.clipboard?.writeText("0x168a...c6e6").catch(()=>{});
+      setCopiedAddr(true);
+      setTimeout(() => setCopiedAddr(false), 1500);
+    };
+
+    const label = (item) => lang === "zh" ? item.zh : item.en;
+
+    return (
+      <nav style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        height: 56,
+        background: "#111",
+        borderBottom: "1px solid #1e1e1e",
+        padding: "0 24px",
+        position: "sticky",
+        top: 0,
+        zIndex: 300,
+        userSelect: "none",
+      }}>
+
+        {/* ── LEFT: Logo ── */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+          flexShrink: 0,
+        }}>
+          <LogoIcon/>
+          <span style={{
+            fontSize: 16,
+            fontWeight: 700,
+            color: "#fff",
+            letterSpacing: .3,
+          }}>SafuSkill</span>
+        </div>
+
+        {/* ── CENTER: Nav links ── */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          position: "absolute",
+          left: "50%",
+          transform: "translateX(-50%)",
+        }}>
+          {NAV_ITEMS.map(item => {
+            const isActive = activeNav === item.key;
+            const isHov    = hovItem === item.key && !isActive;
+            return (
+              <button
+                key={item.key}
+                onClick={() => onNav(item.key)}
+                onMouseEnter={() => setHovItem(item.key)}
+                onMouseLeave={() => setHovItem(null)}
+                style={{
+                  padding: "5px 16px",
+                  borderRadius: 7,
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 14,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "#fff" : isHov ? "#d1d5db" : "#6b7280",
+                  background: isActive ? "rgba(255,255,255,.07)" : "transparent",
+                  transition: "color .15s, background .15s",
+                  borderBottom: isActive ? "2px solid #d4a017" : "2px solid transparent",
+                  marginBottom: -1,
+                }}
+              >
+                {label(item)}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── RIGHT: Controls ── */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          flexShrink: 0,
+        }}>
+
+          {/* Language toggle */}
+          <button
+            onClick={onLangToggle}
+            onMouseEnter={() => setLangHov(true)}
+            onMouseLeave={() => setLangHov(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "5px 10px",
+              background: "transparent",
+              border: "none",
+              borderRadius: 7,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: 13,
+              color: langHov ? "#d1d5db" : "#9ca3af",
+              transition: "color .15s, background .15s",
+              ...(langHov ? { background: "rgba(255,255,255,.05)" } : {}),
+            }}
+          >
+            <GlobeIcon/>
+            <span style={{ marginLeft: 2 }}>{lang === "zh" ? "中文" : "English"}</span>
+            <ChevronDown/>
+          </button>
+
+          {/* Bell */}
+          <button
+            onMouseEnter={() => setBellHov(true)}
+            onMouseLeave={() => setBellHov(false)}
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 34,
+              height: 34,
+              background: bellHov ? "rgba(255,255,255,.06)" : "transparent",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+              transition: "background .15s",
+            }}
+          >
+            <BellIcon color={bellHov ? "#d1d5db" : "#6b7280"}/>
+            {/* Red dot */}
+            <span className="notif-dot" style={{
+              position: "absolute",
+              top: 7,
+              right: 7,
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#ef4444",
+              border: "1.5px solid #111",
+            }}/>
+          </button>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 18, background: "#2a2a2a", margin: "0 4px" }}/>
+
+          {/* Wallet pill + dropdown */}
+          <div ref={walletRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setWalletOpen(o => !o)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "5px 12px 5px 6px",
+                background: walletOpen ? "#222" : "#1a1a1a",
+                border: `1px solid ${walletOpen ? "#333" : "#252525"}`,
+                borderRadius: 20,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "background .15s, border-color .15s",
+              }}
+            >
+              {/* Avatar circle */}
+              <div style={{
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg,#d4a017,#c9961a)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#000",
+                flexShrink: 0,
+              }}>0x</div>
+
+              <span style={{
+                fontSize: 13,
+                color: "#d4a017",
+                fontWeight: 500,
+                letterSpacing: .2,
+              }}>0x168a...c6e6</span>
+
+              <ChevronDown
+                size={9}
+                color="#6b7280"
+              />
+            </button>
+
+            {/* Dropdown */}
+            {walletOpen && (
+              <div className="drop-in" style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: 0,
+                width: 220,
+                background: "#161616",
+                border: "1px solid #222",
+                borderRadius: 12,
+                boxShadow: "0 16px 48px rgba(0,0,0,.6)",
+                overflow: "hidden",
+                zIndex: 400,
+              }}>
+
+                {/* Address header */}
+                <div style={{
+                  padding: "14px 16px 12px",
+                  borderBottom: "1px solid #1e1e1e",
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    color: "#444",
+                    marginBottom: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: .08,
+                    fontWeight: 600,
+                  }}>已连接钱包</div>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}>
+                    <span style={{
+                      fontSize: 13,
+                      color: "#d4a017",
+                      fontFamily: "monospace",
+                      fontWeight: 500,
+                    }}>0x168a...c6e6</span>
+                    <button
+                      onClick={copyAddr}
+                      title="复制地址"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 4,
+                        borderRadius: 5,
+                        display: "flex",
+                        alignItems: "center",
+                        color: copiedAddr ? "#22c55e" : "#555",
+                        transition: "color .15s",
+                      }}
+                    >
+                      {copiedAddr
+                        ? <span style={{ fontSize: 12 }}>✓</span>
+                        : <IconCopy/>
+                      }
+                    </button>
+                  </div>
+                  {/* BNB balance row */}
+                  <div style={{
+                    marginTop: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}>
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#22c55e",
+                      flexShrink: 0,
+                    }}/>
+                    <span style={{ fontSize: 12, color: "#555" }}>余额</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#e0e0e0", marginLeft: "auto" }}>
+                      0.8432 <span style={{ color: "#d4a017" }}>BNB</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Menu items */}
+                <div style={{ padding: "6px 8px" }}>
+                  {WALLET_MENU.map(item => {
+                    const { Icon } = item;
+                    const isHl = item.highlight;
+                    return (
+                      <a
+                        key={item.key}
+                        href={item.href || "#"}
+                        onClick={(e) => { if (!item.href) e.preventDefault(); setWalletOpen(false); }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 10px",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          textDecoration: "none",
+                          transition: "background .12s",
+                          background: "transparent",
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = isHl
+                            ? "rgba(212,160,23,.08)"
+                            : "rgba(255,255,255,.04)";
+                        }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 7,
+                          background: isHl ? "rgba(212,160,23,.1)" : "rgba(255,255,255,.04)",
+                          border: `1px solid ${isHl ? "rgba(212,160,23,.2)" : "#222"}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}>
+                          <Icon size={13} color={isHl ? "#d4a017" : "#6b7280"}/>
+                        </div>
+                        <span style={{
+                          fontSize: 13,
+                          fontWeight: isHl ? 600 : 400,
+                          color: isHl ? "#d4a017" : "#9ca3af",
+                        }}>
+                          {label(item)}
+                        </span>
+                        {isHl && (
+                          <span style={{
+                            marginLeft: "auto",
+                            fontSize: 10,
+                            color: "#d4a017",
+                            opacity: .7,
+                          }}>→</span>
+                        )}
+                      </a>
+                    );
+                  })}
+                </div>
+
+                {/* Divider + disconnect */}
+                <div style={{ borderTop: "1px solid #1e1e1e", padding: "6px 8px 8px" }}>
+                  <button
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 10px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "background .12s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,.06)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <div style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 7,
+                      background: "rgba(239,68,68,.06)",
+                      border: "1px solid rgba(239,68,68,.15)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      <IconLogout size={13} color="#ef4444"/>
+                    </div>
+                    <span style={{ fontSize: 13, color: "#ef4444" }}>断开连接</span>
+                  </button>
+                </div>
+
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  /* ─────────────────────────────────────
+     DEMO PAGE — shows the navbar in context
+  ───────────────────────────────────── */
+  function App() {
+    const [lang,      setLang]      = useState("zh");
+    const [activeNav, setActiveNav] = useState("launchpad");
+
+    return (
+      <div style={{ minHeight: "100vh", background: "#0d0d0d", color: "#e0e0e0" }}>
+        <Navbar
+          lang={lang}
+          onLangToggle={() => setLang(l => l === "zh" ? "en" : "zh")}
+          activeNav={activeNav}
+          onNav={setActiveNav}
+        />
+
+        {/* Page body placeholder */}
+        <div style={{
+          maxWidth: 760,
+          margin: "60px auto",
+          padding: "0 24px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 16,
+          textAlign: "center",
+        }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            background: "rgba(212,160,23,.1)",
+            border: "1px solid rgba(212,160,23,.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 22,
+          }}>🧭</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>
+            Navbar 组件演示
+          </div>
+          <div style={{ fontSize: 13, color: "#555", lineHeight: 1.7 }}>
+            点击右侧钱包地址旁的 <span style={{ color: "#d4a017" }}>▼</span> 展开下拉菜单<br/>
+            选择「我的代币」跳转至 <code style={{ background: "#1a1a1a", padding: "1px 6px", borderRadius: 4, color: "#d4a017" }}>MyTokens.html</code>
+          </div>
+          <div style={{
+            marginTop: 8,
+            display: "flex",
+            gap: 8,
+          }}>
+            {["技能市场","发射台","文档","开发者"].map((item, i) => (
+              <div key={i} style={{
+                padding: "6px 14px",
+                background: "#1a1a1a",
+                border: "1px solid #222",
+                borderRadius: 8,
+                fontSize: 12,
+                color: "#555",
+              }}>{item}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
