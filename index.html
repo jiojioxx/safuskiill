@@ -79,11 +79,15 @@
       website: "网站", websitePh: "https://yourproject.com",
       twitter: "推特", twitterPh: "https://x.com/yourhandle",
       feeTitle: "交易费率说明",
-      feeDesc: () => <><span style={S.feeBadge}>1%</span> 协议手续费将自动分配至 Skill 创作者奖励、AI 技能激励池与 SafuSkill 生态基金。费率由智能合约永久锁定，任何人无法单方面修改，持币者权益有合约保障。</>,
+      feeDesc: () => <><span style={S.feeBadge}>1%</span> 协议手续费按以下比例自动分配。Skill 开发者直接获得绝大部分收益，激励层为活跃用户带来空投机会。费率由智能合约永久锁定，持币者权益有合约保障。</>,
       feeToggle: (open) => open ? "收起详情 ▲" : "查看分配详情 ▼",
-      feeHeader: "费率分配", feeTotal: "总计：100%",
+      feeHeader: "费率分配", feeTotal: "协议费：1%",
       feeLocked: "此比例由智能合约锁定，不可修改",
-      feeItems: [{ label:"平台", pct:30 }, { label:"开发者奖励", pct:40 }, { label:"Skill 奖励", pct:30 }],
+      feeItems: [
+        { label:"Skill 开发者收益", pct:70 },
+        { label:"Skill 激励层", pct:15, sub:"平台下载 Skill 用户有机会获得奖励，代币市值达到目标即触发空投" },
+        { label:"平台", pct:15 },
+      ],
       createBtn: "创建代币",
       footer: "技术支持 · Flap Protocol | BNB Chain",
       umTitle: "上传技能",
@@ -120,12 +124,14 @@
       /* ── GitHub 认证领取手续费 ── */
       claimNavBtn: "领取收益",
       claimTitle: "领取开发者手续费",
-      claimSub: "通过 GitHub 账号验证技能所有权，领取属于您的协议奖励",
+      claimSub: "上传发布技能时的 ZIP 文件，系统自动匹配技能所有权，领取协议奖励",
       claimGhBtn: "使用 GitHub 账号继续",
-      claimGhHint: "仅用于验证技能所有权，不会读取或修改您的仓库",
-      claimLoading: "正在连接 GitHub...",
-      claimLoadingSub: "请在弹出的授权窗口中完成确认",
-      claimVerifiedLabel: "身份已验证",
+      claimGhHint: "仅用于验证技能所有权，不会收集您的文件内容",
+      claimLoading: "正在验证 ZIP 文件...",
+      claimLoadingSub: "请稍候，系统正在匹配技能所有权...",
+      claimVerifiedLabel: "ZIP 验证成功",
+      claimZipUploadBtn: "点击上传技能 ZIP 文件",
+      claimZipUploadSub: "支持 .zip 格式 · 最大 50MB",
       claimSkillsTitle: "您的技能收益",
       claimPending: "待领取",
       claimEarned: "累计",
@@ -137,7 +143,7 @@
       claimViewTx: "查看交易记录 →",
       claimZipNote: "通过 ZIP 上传的技能",
       claimZipMethod: "使用钱包签名验证所有权",
-      claimDisconnect: "切换账号",
+      claimDisconnect: "重新上传",
     },
     en: {
       navItems: ["Skill Market","Launchpad","Docs","Developer"],
@@ -158,11 +164,15 @@
       website: "Website", websitePh: "https://yourproject.com",
       twitter: "Twitter", twitterPh: "https://x.com/yourhandle",
       feeTitle: "Transaction Fee Notice",
-      feeDesc: () => <><span style={S.feeBadge}>1%</span> protocol fee is automatically distributed to Skill creator rewards, AI skill incentive pool, and the SafuSkill ecosystem fund. The fee is permanently locked by smart contract and cannot be changed unilaterally.</>,
+      feeDesc: () => <><span style={S.feeBadge}>1%</span> protocol fee is automatically distributed as shown below. Skill developers receive the majority; the incentive layer rewards active users with potential airdrops when token market cap targets are met. Rates are permanently locked by smart contract.</>,
       feeToggle: (open) => open ? "Hide Details ▲" : "View Distribution ▼",
-      feeHeader: "Fee Distribution", feeTotal: "Total: 100%",
+      feeHeader: "Fee Distribution", feeTotal: "Protocol Fee: 1%",
       feeLocked: "This allocation is permanently locked by smart contract",
-      feeItems: [{ label:"Platform", pct:30 }, { label:"Developer Rewards", pct:40 }, { label:"Skill Rewards", pct:30 }],
+      feeItems: [
+        { label:"Skill Developer Revenue", pct:70 },
+        { label:"Skill Incentive Layer", pct:15, sub:"Users downloading skills may earn rewards; airdrop triggers when token market cap hits target" },
+        { label:"Platform", pct:15 },
+      ],
       createBtn: "Create Token",
       footer: "Powered by Flap Protocol | BNB Chain",
       umTitle: "Upload Skill",
@@ -199,12 +209,14 @@
       /* ── GitHub Auth Fee Claiming ── */
       claimNavBtn: "Claim Rewards",
       claimTitle: "Claim Developer Fees",
-      claimSub: "Verify skill ownership via GitHub to claim your protocol rewards",
+      claimSub: "Upload the ZIP file used when publishing your skill — ownership is matched automatically",
       claimGhBtn: "Continue with GitHub",
-      claimGhHint: "Used only to verify skill ownership — no repo access or modifications",
-      claimLoading: "Connecting to GitHub...",
-      claimLoadingSub: "Please complete the authorization in the popup window",
-      claimVerifiedLabel: "Identity Verified",
+      claimGhHint: "Used only to verify skill ownership — file contents are never stored",
+      claimLoading: "Verifying ZIP file...",
+      claimLoadingSub: "Please wait, matching skill ownership...",
+      claimVerifiedLabel: "ZIP Verified",
+      claimZipUploadBtn: "Click to upload skill ZIP file",
+      claimZipUploadSub: "Supports .zip format · Max 50MB",
       claimSkillsTitle: "Your Skill Rewards",
       claimPending: "Pending",
       claimEarned: "Earned",
@@ -216,7 +228,7 @@
       claimViewTx: "View Transaction →",
       claimZipNote: "ZIP-uploaded skills",
       claimZipMethod: "Verify ownership via wallet signature",
-      claimDisconnect: "Switch Account",
+      claimDisconnect: "Re-upload",
     },
   };
 
@@ -679,7 +691,7 @@
     { id:3, name:"Translation Agent v2",   icon:"🌐", source:"zip",    pending:"0.0021 BNB", earned:"0.0078 BNB" },
   ];
   const TOTAL_PENDING = "0.0153 BNB";
-  const MOCK_GH_USER  = { login:"safuskill-dev", avatar:"🐙" };
+  const MOCK_GH_USER  = { login:"skill_zip_verified", avatar:"📁" };
 
   function ClaimFeesModal({ onClose, t }) {
     const [step, setStep] = useState("idle");
@@ -712,13 +724,13 @@
           {/* ── Body ── */}
           <div style={S.claimBody}>
 
-            {/* IDLE — GitHub connect */}
+            {/* IDLE — ZIP upload */}
             {step === "idle" && (<>
               <div style={{marginBottom:20, background:"#141414", borderRadius:12, border:"1px solid #222", padding:"20px 20px 16px"}}>
                 {/* Steps preview */}
                 <div style={{display:"flex", gap:0, marginBottom:18}}>
                   {[
-                    { icon:"🔐", label: t.lang === "en" ? "Connect GitHub" : "连接 GitHub" },
+                    { icon:"📁", label: t.lang === "en" ? "Upload ZIP" : "上传 ZIP" },
                     { icon:"✅", label: t.lang === "en" ? "Verify Ownership" : "验证所有权" },
                     { icon:"💰", label: t.lang === "en" ? "Claim Rewards" : "领取收益" },
                   ].map((s, i, arr) => (
@@ -733,36 +745,24 @@
                 </div>
               </div>
 
-              <button
-                style={S.ghAuthBtn}
+              {/* ZIP upload zone */}
+              <div
+                style={{background:"rgba(212,160,23,.04)", border:"2px dashed rgba(212,160,23,.25)", borderRadius:12, padding:"28px 20px", textAlign:"center", cursor:"pointer", transition:"border-color .2s"}}
                 onClick={handleGhAuth}
-                onMouseOver={e => { e.currentTarget.style.background="#2d3339"; e.currentTarget.style.borderColor="#555"; }}
-                onMouseOut={e  => { e.currentTarget.style.background="#24292e"; e.currentTarget.style.borderColor="#444"; }}
+                onMouseOver={e => e.currentTarget.style.borderColor="rgba(212,160,23,.5)"}
+                onMouseOut={e => e.currentTarget.style.borderColor="rgba(212,160,23,.25)"}
               >
-                <GitHubIcon color="#fff" size={18}/>
-                {t.claimGhBtn}
-              </button>
+                <div style={{fontSize:32, marginBottom:10}}>📁</div>
+                <div style={{fontSize:14, fontWeight:600, color:"#e0e0e0", marginBottom:6}}>{t.claimZipUploadBtn}</div>
+                <div style={{fontSize:11, color:"#555"}}>{t.claimZipUploadSub}</div>
+              </div>
 
-              <div style={S.ghHint}>
+              <div style={{marginTop:12, fontSize:11, color:"#444", textAlign:"center", lineHeight:1.6, display:"flex", alignItems:"center", justifyContent:"center", gap:4}}>
                 <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                   <rect x="1.5" y="4.5" width="8" height="5.5" rx="1.5" stroke="#555" strokeWidth="1.1"/>
                   <path d="M3 4.5V3a2.5 2.5 0 015 0v1.5" stroke="#555" strokeWidth="1.1" strokeLinecap="round"/>
                 </svg>
                 {t.claimGhHint}
-              </div>
-
-              {/* ZIP alternative */}
-              <div style={{marginTop:16, padding:"12px 14px", background:"rgba(212,160,23,.04)", border:"1px dashed rgba(212,160,23,.18)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"space-between"}}>
-                <div>
-                  <div style={{fontSize:12, color:"#6b7280", marginBottom:3}}>{t.claimZipNote}</div>
-                  <div style={{fontSize:11, color:"#444"}}>{t.claimZipMethod}</div>
-                </div>
-                <button
-                  style={{background:"rgba(212,160,23,.1)", border:"1px solid rgba(212,160,23,.2)", borderRadius:8, padding:"6px 12px", fontSize:11, fontWeight:600, color:"#d4a017", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", marginLeft:12}}
-                  onClick={() => alert("钱包签名验证功能即将上线")}
-                >
-                  📁 ZIP →
-                </button>
               </div>
             </>)}
 
@@ -1233,11 +1233,14 @@
                       </div>
 
                       {/* bars */}
-                      {t.feeItems.map(({label,pct})=>(
+                      {t.feeItems.map(({label,pct,sub})=>(
                         <div key={label} style={{marginBottom:12}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                            <span style={{fontSize:12,color:"#9ca3af"}}>{label}</span>
-                            <span style={{fontSize:12,fontWeight:700,color:"#d4a017"}}>{pct}%</span>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                            <div>
+                              <span style={{fontSize:12,color:"#9ca3af"}}>{label}</span>
+                              {sub && <div style={{fontSize:10,color:"#555",marginTop:2,lineHeight:1.5,maxWidth:220}}>{sub}</div>}
+                            </div>
+                            <span style={{fontSize:12,fontWeight:700,color:"#d4a017",flexShrink:0,marginLeft:8}}>{pct}%</span>
                           </div>
                           <div className="bar-track">
                             <div className="bar-fill" style={{width: feeOpen ? `${pct}%` : "0%"}}/>

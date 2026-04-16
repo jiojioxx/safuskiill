@@ -138,10 +138,6 @@
 
     // discover tab state
     const [mainTab,            setMainTab]           = useState(initialTab);
-    const [discoverMode,       setDiscoverMode]      = useState("github");
-    const [searchRepo,         setSearchRepo]        = useState("");
-    const [searchResult,       setSearchResult]      = useState(null);
-    const [searching,          setSearching]         = useState(false);
     const [claimingDiscId,     setClaimingDiscId]    = useState(null);
     // GitHub OAuth state: "idle" | "connecting" | "scanning" | "done"
     const [ghAuthStatus,  setGhAuthStatus]  = useState("idle");
@@ -149,25 +145,24 @@
     const doGithubLogin = () => {
       setGhAuthStatus("connecting");
       setTimeout(() => {
+        // 模拟已登录账号关联的收益钱包
+        // 实际场景：后端返回该 GitHub 账号绑定的钱包地址，无则为空字符串
+        const mockLinkedWallet = "0x168af1c3e9a74b2fd0c8e3a721bbc6e6"; // 模拟已有绑定钱包
+        // const mockLinkedWallet = ""; // 取消注释可演示「无关联钱包，待输入」场景
         setGhUser({ login: "your-github-id" });
-        setGhAuthStatus("scanning");
-        setTimeout(() => {
-          setSearchResult(MOCK_DISCOVER_RESULTS);
-          // 自动将全部关联代币写入领取收益列表，无需用户逐一点击
-          setSkills(prev => {
-            const existingIds = new Set(prev.map(s => s.name));
-            const toAdd = MOCK_DISCOVER_RESULTS
-              .filter(r => !existingIds.has(r.name))
-              .map(r => ({ id: Date.now() + r.id, name: r.name, icon: r.icon, source: "github", claimStatus: "approved", pending: r.pendingBNB, earned: "0 BNB" }));
-            return [...prev, ...toAdd];
-          });
-          setGhAuthStatus("done");
-        }, 1800);
+        setDiscoverWallet(mockLinkedWallet);
+        setDiscoverWalletInput(mockLinkedWallet);
+        setDiscoverWalletModified(false);
+        setGhAuthStatus("done");
       }, 1200);
     };
     const doGithubLogout = () => {
-      setGhAuthStatus("idle"); setGhUser(null); setSearchResult(null);
-      setClaimedDiscIds(new Set()); setClaimingDiscId(null);
+      setGhAuthStatus("idle");
+      setGhUser(null);
+      setDiscoverWallet("");
+      setDiscoverWalletInput("");
+      setDiscoverWalletModified(false);
+      setDiscoverWalletEditing(false);
     };
     const [claimedDiscIds,     setClaimedDiscIds]    = useState(new Set());
     const [discoverWallet,       setDiscoverWallet]       = useState(beneficiaryWallet);
@@ -389,285 +384,194 @@
               {/* ─── 发现认领 ─── */}
               {mainTab==="discover" && (<>
 
-                {/* 收益钱包（两种模式共用） */}
-                <div style={{marginBottom:14}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
-                    <span style={{fontSize:11,fontWeight:600,color:"#555"}}>
-                      收益到账钱包 <span style={{color:"#ef4444"}}>*</span>
-                    </span>
-                    {/* 已绑定且已用完修改机会 → 永久锁定标签 */}
-                    {walletBound && discoverWalletModified && (
-                      <span style={{fontSize:10,color:"#3a4a3a",display:"flex",alignItems:"center",gap:3}}>
-                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                          <rect x=".8" y="3.8" width="7.4" height="4.8" rx="1.2" stroke="#3a5a3a" strokeWidth="1.1"/>
-                          <path d="M2.8 3.8V2.8a1.7 1.7 0 013.4 0v1" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round"/>
-                        </svg>
-                        已绑定，不可修改
-                      </span>
-                    )}
-                    {/* 已绑定但尚未用修改机会 → 修改入口 */}
-                    {walletCanEdit && (
-                      <span
-                        onClick={()=>{ setDiscoverWalletInput(discoverWallet); setDiscoverWalletEditing(true); }}
-                        style={{fontSize:11,color:"#d4a017",fontWeight:600,cursor:"pointer"}}
-                        onMouseOver={e=>e.currentTarget.style.opacity=".7"}
-                        onMouseOut={e=>e.currentTarget.style.opacity="1"}>
-                        修改
-                      </span>
-                    )}
+                {/* ── GitHub 账号绑定 ── */}
+                {ghAuthStatus==="idle" && (
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 0 4px",gap:14}}>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"#d0d0d0",marginBottom:6}}>绑定 GitHub 账号验证身份</div>
+                      <div style={{fontSize:11,color:"#3a3a3a",lineHeight:1.7,maxWidth:300}}>
+                        绑定后系统将自动识别与您账号关联的技能代币，
+                        收益直接加入领取列表。
+                      </div>
+                    </div>
+                    <button onClick={doGithubLogin}
+                      style={{display:"flex",alignItems:"center",gap:9,padding:"10px 22px",
+                        background:"#fff",border:"none",borderRadius:9,
+                        fontSize:13,fontWeight:700,color:"#0d0d0d",
+                        cursor:"pointer",fontFamily:"inherit",transition:"opacity .15s"}}
+                      onMouseOver={e=>e.currentTarget.style.opacity=".88"}
+                      onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                      <GitHubIcon size={16} color="#0d0d0d"/>
+                      绑定 GitHub 账号
+                    </button>
+                    <div style={{fontSize:10,color:"#2a2a2a",textAlign:"center",lineHeight:1.6}}>
+                      仅用于验证身份，不会读取或修改您的仓库
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 连接中 ── */}
+                {ghAuthStatus==="connecting" && (
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 0",gap:12}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <GitHubIcon size={20} color="#888"/>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:7,fontSize:13,color:"#888"}}>
+                      <div className="spinner-w" style={{width:12,height:12,borderWidth:1.5}}/>
+                      正在连接 GitHub...
+                    </div>
+                    <div style={{fontSize:11,color:"#2a2a2a"}}>请在弹出的窗口中完成授权</div>
+                  </div>
+                )}
+
+                {/* ── 已绑定：显示 ZIP 认领表单 ── */}
+                {ghAuthStatus==="done" && (<>
+                  {/* GitHub 已绑定徽章 */}
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,
+                    background:"rgba(34,197,94,.04)",border:"1px solid rgba(34,197,94,.14)",
+                    borderRadius:8,padding:"8px 12px"}}>
+                    <div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#16a34a)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <GitHubIcon size={12} color="#fff"/>
+                    </div>
+                    <span style={{fontSize:12,color:"#4ade80",fontWeight:600,flex:1}}>@{ghUser?.login}</span>
+                    <div style={{fontSize:10,color:"#22c55e",background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.18)",borderRadius:5,padding:"2px 7px",flexShrink:0}}>已绑定</div>
+                    <button onClick={doGithubLogout}
+                      style={{fontSize:11,color:"#444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"0 0 0 8px",flexShrink:0}}
+                      onMouseOver={e=>e.currentTarget.style.color="#ef4444"}
+                      onMouseOut={e=>e.currentTarget.style.color="#444"}>
+                      解除绑定
+                    </button>
                   </div>
 
-                  {/* ── 已绑定且未在编辑中：只读展示 ── */}
-                  {walletBound && !discoverWalletEditing && (
-                    <div style={{display:"flex",alignItems:"center",gap:9,
-                      background:"#111",
-                      border:`1px solid ${discoverWalletModified?"rgba(34,197,94,.15)":"rgba(34,197,94,.25)"}`,
-                      borderRadius:8,padding:"9px 12px"}}>
-                      <WalletIconYellow size={14} color={discoverWalletModified?"#2a5a2a":"#3a7a3a"}/>
-                      <span style={{flex:1,fontSize:12,color:"#bbb",
-                        fontFamily:"'SF Mono','Fira Code','Consolas',monospace",letterSpacing:.3}}>
-                        {discoverWallet}
+                  {/* 收益到账钱包（GitHub 绑定后显示） */}
+                  <div style={{marginBottom:16}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                      <span style={{fontSize:11,fontWeight:600,color:"#555"}}>
+                        收益到账钱包 <span style={{color:"#ef4444"}}>*</span>
                       </span>
-                      {discoverWalletModified
-                        ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <rect x=".8" y="4.2" width="8.4" height="5.3" rx="1.3" fill="none" stroke="#3a5a3a" strokeWidth="1.1"/>
-                            <path d="M3 4.2V3a2 2 0 014 0v1.2" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round"/>
+                      {walletBound && discoverWalletModified && (
+                        <span style={{fontSize:10,color:"#3a4a3a",display:"flex",alignItems:"center",gap:3}}>
+                          <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                            <rect x=".8" y="3.8" width="7.4" height="4.8" rx="1.2" stroke="#3a5a3a" strokeWidth="1.1"/>
+                            <path d="M2.8 3.8V2.8a1.7 1.7 0 013.4 0v1" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round"/>
                           </svg>
-                        : <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <circle cx="5" cy="5" r="4.5" fill="#22c55e"/>
-                            <path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                      }
+                          已绑定，不可修改
+                        </span>
+                      )}
+                      {walletCanEdit && (
+                        <span
+                          onClick={()=>{ setDiscoverWalletInput(discoverWallet); setDiscoverWalletEditing(true); }}
+                          style={{fontSize:11,color:"#d4a017",fontWeight:600,cursor:"pointer"}}
+                          onMouseOver={e=>e.currentTarget.style.opacity=".7"}
+                          onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                          修改
+                        </span>
+                      )}
                     </div>
-                  )}
 
-                  {/* ── 修改编辑模式 ── */}
-                  {walletBound && discoverWalletEditing && (
-                    <div>
-                      <input
-                        value={discoverWalletInput}
-                        onChange={e=>setDiscoverWalletInput(e.target.value)}
-                        autoFocus
-                        placeholder="输入新钱包地址 0x..."
-                        style={{width:"100%",background:"#111",
-                          border:"1px solid rgba(212,160,23,.45)",
-                          borderRadius:8,padding:"8px 12px",fontSize:12,color:"#e0e0e0",
-                          outline:"none",fontFamily:"'SF Mono','Fira Code','Consolas',monospace",
-                          boxSizing:"border-box",letterSpacing:.3,marginBottom:8,transition:"border-color .2s"}}
-                      />
-                      <div style={{display:"flex",gap:7,marginBottom:5}}>
-                        <button
-                          onClick={()=>{
-                            const v = discoverWalletInput.trim();
-                            if(!v) return;
-                            setDiscoverWallet(v);
-                            setDiscoverWalletModified(true);
-                            setDiscoverWalletEditing(false);
-                          }}
-                          disabled={!discoverWalletInput.trim()}
-                          style={{flex:1,padding:"7px",borderRadius:7,border:"none",fontSize:12,fontWeight:700,
-                            cursor:discoverWalletInput.trim()?"pointer":"not-allowed",fontFamily:"inherit",
-                            background:discoverWalletInput.trim()?"linear-gradient(135deg,#d4a017,#c9961a)":"#1e1e1e",
-                            color:discoverWalletInput.trim()?"#000":"#333",transition:"all .15s"}}>
-                          确认修改
-                        </button>
-                        <button
-                          onClick={()=>{ setDiscoverWalletEditing(false); setDiscoverWalletInput(discoverWallet); }}
-                          style={{flex:1,padding:"7px",background:"transparent",
-                            border:"1px solid #2e2e2e",borderRadius:7,fontSize:12,
-                            color:"#666",cursor:"pointer",fontFamily:"inherit"}}>
-                          取消
-                        </button>
+                    {/* 已绑定只读展示 */}
+                    {walletBound && !discoverWalletEditing && (
+                      <div style={{display:"flex",alignItems:"center",gap:9,background:"#111",
+                        border:`1px solid ${discoverWalletModified?"rgba(34,197,94,.15)":"rgba(34,197,94,.25)"}`,
+                        borderRadius:8,padding:"9px 12px"}}>
+                        <WalletIconYellow size={14} color={discoverWalletModified?"#2a5a2a":"#3a7a3a"}/>
+                        <span style={{flex:1,fontSize:12,color:"#bbb",
+                          fontFamily:"'SF Mono','Fira Code','Consolas',monospace",letterSpacing:.3}}>
+                          {discoverWallet}
+                        </span>
+                        {discoverWalletModified
+                          ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <rect x=".8" y="4.2" width="8.4" height="5.3" rx="1.3" fill="none" stroke="#3a5a3a" strokeWidth="1.1"/>
+                              <path d="M3 4.2V3a2 2 0 014 0v1.2" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round"/>
+                            </svg>
+                          : <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <circle cx="5" cy="5" r="4.5" fill="#22c55e"/>
+                              <path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        }
                       </div>
-                      <div style={{fontSize:10,color:"#7a5010",display:"flex",alignItems:"flex-start",gap:4,lineHeight:1.55}}>
-                        <span style={{flexShrink:0}}>⚠</span>
-                        修改机会仅剩 1 次，确认后将永久锁定，请仔细核对地址
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* ── 未绑定：初次绑定 ── */}
-                  {!walletBound && (
-                    <>
-                      <div style={{display:"flex",gap:7}}>
+                    {/* 修改编辑模式（仅限一次） */}
+                    {walletBound && discoverWalletEditing && (
+                      <div>
                         <input
                           value={discoverWalletInput}
                           onChange={e=>setDiscoverWalletInput(e.target.value)}
-                          placeholder="0x... 认领收益将发送至此地址"
-                          style={{flex:1,background:"#111",
-                            border:`1px solid ${discoverWalletInput.trim()?"rgba(34,197,94,.25)":"#252525"}`,
+                          autoFocus
+                          placeholder="输入新钱包地址 0x..."
+                          style={{width:"100%",background:"#111",
+                            border:"1px solid rgba(212,160,23,.45)",
                             borderRadius:8,padding:"8px 12px",fontSize:12,color:"#e0e0e0",
                             outline:"none",fontFamily:"'SF Mono','Fira Code','Consolas',monospace",
-                            boxSizing:"border-box",letterSpacing:.3,transition:"border-color .2s"}}
-                          onFocus={e=>e.currentTarget.style.borderColor="rgba(212,160,23,.35)"}
-                          onBlur={e=>e.currentTarget.style.borderColor=discoverWalletInput.trim()?"rgba(34,197,94,.25)":"#252525"}
+                            boxSizing:"border-box",letterSpacing:.3,marginBottom:8,transition:"border-color .2s"}}
                         />
-                        <button
-                          onClick={()=>{
-                            const v = discoverWalletInput.trim();
-                            if(!v) return;
-                            setDiscoverWallet(v);
-                          }}
-                          disabled={!discoverWalletInput.trim()}
-                          style={{padding:"8px 14px",borderRadius:8,border:"none",fontSize:12,fontWeight:700,
-                            cursor:discoverWalletInput.trim()?"pointer":"not-allowed",fontFamily:"inherit",flexShrink:0,
-                            background:discoverWalletInput.trim()?"linear-gradient(135deg,#d4a017,#c9961a)":"#1e1e1e",
-                            color:discoverWalletInput.trim()?"#000":"#333",transition:"all .15s"}}>
-                          确认绑定
-                        </button>
-                      </div>
-                      <div style={{marginTop:5,fontSize:10,color:"#5a3a1a",display:"flex",alignItems:"flex-start",gap:4,lineHeight:1.55}}>
-                        <span style={{flexShrink:0,marginTop:1}}>⚠</span>
-                        <span>{discoverWalletInput.trim() ? "绑定后仅可修改一次，请确认地址无误" : "请填写收益到账钱包地址"}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Source mode: GitHub / ZIP */}
-                <div style={{display:"flex",gap:7,marginBottom:14}}>
-                  {[["github","GitHub 仓库"],["zip","ZIP 文件"]].map(([key,label])=>(
-                    <button key={key}
-                      onClick={()=>{setDiscoverMode(key);setSearchResult(null);setSearchRepo("");setDisputeFields({skillName:"",tokenAddr:"",note:""});}}
-                      style={{padding:"5px 14px",borderRadius:7,border:`1px solid ${discoverMode===key?"rgba(212,160,23,.35)":"#1e1e1e"}`,fontSize:12,fontWeight:discoverMode===key?600:400,
-                        color:discoverMode===key?"#d4a017":"#555",background:discoverMode===key?"rgba(212,160,23,.06)":"transparent",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* ── GitHub 仓库模式 ── */}
-                {discoverMode==="github" && (<>
-
-                  {/* ── idle：未登录 ── */}
-                  {ghAuthStatus==="idle" && (
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 0 4px",gap:14}}>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontSize:13,fontWeight:600,color:"#d0d0d0",marginBottom:6}}>通过 GitHub 授权认领收益</div>
-                        <div style={{fontSize:11,color:"#3a3a3a",lineHeight:1.7,maxWidth:320}}>
-                          授权后平台将自动扫描您 GitHub 账号下的所有 Skill，
-                          一键绑定已被用于发行代币的技能，收益直接加入领取列表。
+                        <div style={{display:"flex",gap:7,marginBottom:5}}>
+                          <button
+                            onClick={()=>{
+                              const v = discoverWalletInput.trim();
+                              if(!v) return;
+                              setDiscoverWallet(v);
+                              setDiscoverWalletModified(true);
+                              setDiscoverWalletEditing(false);
+                            }}
+                            disabled={!discoverWalletInput.trim()}
+                            style={{flex:1,padding:"7px",borderRadius:7,border:"none",fontSize:12,fontWeight:700,
+                              cursor:discoverWalletInput.trim()?"pointer":"not-allowed",fontFamily:"inherit",
+                              background:discoverWalletInput.trim()?"linear-gradient(135deg,#d4a017,#c9961a)":"#1e1e1e",
+                              color:discoverWalletInput.trim()?"#000":"#333",transition:"all .15s"}}>
+                            确认修改
+                          </button>
+                          <button
+                            onClick={()=>{ setDiscoverWalletEditing(false); setDiscoverWalletInput(discoverWallet); }}
+                            style={{flex:1,padding:"7px",background:"transparent",
+                              border:"1px solid #2e2e2e",borderRadius:7,fontSize:12,
+                              color:"#666",cursor:"pointer",fontFamily:"inherit"}}>
+                            取消
+                          </button>
                         </div>
-                      </div>
-                      <button onClick={doGithubLogin}
-                        style={{display:"flex",alignItems:"center",gap:9,padding:"10px 22px",
-                          background:"#fff",border:"none",borderRadius:9,
-                          fontSize:13,fontWeight:700,color:"#0d0d0d",
-                          cursor:"pointer",fontFamily:"inherit",transition:"opacity .15s"}}
-                        onMouseOver={e=>e.currentTarget.style.opacity=".88"}
-                        onMouseOut={e=>e.currentTarget.style.opacity="1"}>
-                        <GitHubIcon size={16} color="#0d0d0d"/>
-                        使用 GitHub 登录
-                      </button>
-                      <div style={{fontSize:10,color:"#2a2a2a",textAlign:"center",lineHeight:1.6}}>
-                        仅读取仓库列表，不会修改您的任何数据
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── connecting：OAuth 跳转中 ── */}
-                  {ghAuthStatus==="connecting" && (
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 0",gap:12}}>
-                      <div style={{width:44,height:44,borderRadius:"50%",background:"#1a1a1a",border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                        <GitHubIcon size={20} color="#888"/>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:7,fontSize:13,color:"#888"}}>
-                        <div className="spinner-w" style={{width:12,height:12,borderWidth:1.5}}/>
-                        正在跳转 GitHub 授权...
-                      </div>
-                      <div style={{fontSize:11,color:"#2a2a2a"}}>请在弹出的窗口中完成授权</div>
-                    </div>
-                  )}
-
-                  {/* ── scanning：登录成功，扫描中 ── */}
-                  {ghAuthStatus==="scanning" && (
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"24px 0",gap:12}}>
-                      {/* 用户徽章 */}
-                      <div style={{display:"flex",alignItems:"center",gap:8,background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.18)",borderRadius:8,padding:"7px 14px"}}>
-                        <div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#16a34a)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                          <GitHubIcon size={12} color="#fff"/>
+                        <div style={{fontSize:10,color:"#7a5010",display:"flex",alignItems:"flex-start",gap:4,lineHeight:1.55}}>
+                          <span style={{flexShrink:0}}>⚠</span>
+                          修改机会仅剩 1 次，确认后将永久锁定，请仔细核对地址
                         </div>
-                        <span style={{fontSize:12,color:"#4ade80",fontWeight:600}}>@{ghUser?.login}</span>
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:7,fontSize:13,color:"#666"}}>
-                        <div className="spinner-g" style={{width:12,height:12,borderWidth:1.5}}/>
-                        正在扫描账号下的 Skill...
-                      </div>
-                      <div style={{fontSize:11,color:"#2a2a2a",textAlign:"center",lineHeight:1.65}}>
-                        正在检索与您仓库关联的代币，<br/>请稍候
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── done：扫描完成，展示结果 ── */}
-                  {ghAuthStatus==="done" && (<>
-                    {/* 已连接用户栏 */}
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,
-                      background:"rgba(34,197,94,.04)",border:"1px solid rgba(34,197,94,.14)",
-                      borderRadius:8,padding:"8px 12px"}}>
-                      <div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#16a34a)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                        <GitHubIcon size={12} color="#fff"/>
-                      </div>
-                      <span style={{fontSize:12,color:"#4ade80",fontWeight:600,flex:1}}>@{ghUser?.login}</span>
-                      <div style={{fontSize:10,color:"#22c55e",background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.18)",borderRadius:5,padding:"2px 7px",flexShrink:0}}>已连接</div>
-                      <button onClick={doGithubLogout}
-                        style={{fontSize:11,color:"#444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",padding:"0 0 0 8px",flexShrink:0}}
-                        onMouseOver={e=>e.currentTarget.style.color="#ef4444"}
-                        onMouseOut={e=>e.currentTarget.style.color="#444"}>
-                        断开
-                      </button>
-                    </div>
-
-                    {searchResult && searchResult.length===0 && (
-                      <div style={{textAlign:"center",padding:"24px 0",color:"#333",fontSize:12}}>
-                        未发现使用您仓库发行的代币
                       </div>
                     )}
-                    {searchResult && searchResult.length>0 && (<>
-                      {/* 自动入账成功提示 */}
-                      <div style={{display:"flex",alignItems:"center",gap:9,
-                        background:"rgba(34,197,94,.05)",border:"1px solid rgba(34,197,94,.18)",
-                        borderRadius:9,padding:"10px 13px",marginBottom:12}}>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{flexShrink:0}}>
-                          <circle cx="7" cy="7" r="6.5" fill="#22c55e"/>
-                          <path d="M3.5 7l2.2 2.2L10.5 5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span style={{fontSize:12,color:"#3a7a4a",flex:1}}>
-                          已自动绑定 <span style={{fontWeight:700,color:"#4ade80"}}>{searchResult.length}</span> 个关联代币，收益已加入领取列表
-                        </span>
-                        <button onClick={()=>setMainTab("mine")}
-                          style={{fontSize:11,fontWeight:700,color:"#000",background:"linear-gradient(135deg,#22c55e,#16a34a)",
-                            border:"none",borderRadius:6,padding:"4px 11px",cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>
-                          前往领取 →
-                        </button>
-                      </div>
 
-                      {/* 已绑定代币列表（纯展示，无操作） */}
-                      {searchResult.map(item=>(
-                        <div key={item.id} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid #1a1a1a"}}>
-                          <div style={{width:34,height:34,borderRadius:9,background:"#1a1a1a",border:"1px solid #222",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>
-                            {item.icon}
-                          </div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:13,fontWeight:500,color:"#d0d0d0",marginBottom:3,display:"flex",alignItems:"center",gap:6}}>
-                              {item.name}
-                              <span style={{fontSize:10,color:"#d4a017",background:"rgba(212,160,23,.07)",border:"1px solid rgba(212,160,23,.14)",borderRadius:4,padding:"1px 6px"}}>${item.token}</span>
-                            </div>
-                            <div style={{fontSize:11,color:"#3a3a3a"}}>发行方 {item.launchedBy} · {item.launchDate} · 待领取 {item.pendingBNB}</div>
-                          </div>
-                          <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            已入账
-                          </div>
+                    {/* 待输入：GitHub 账号无关联钱包 */}
+                    {!walletBound && (
+                      <>
+                        <div style={{display:"flex",gap:7}}>
+                          <input
+                            value={discoverWalletInput}
+                            onChange={e=>setDiscoverWalletInput(e.target.value)}
+                            placeholder="0x... 认领收益将发送至此地址"
+                            style={{flex:1,background:"#111",
+                              border:`1px solid ${discoverWalletInput.trim()?"rgba(34,197,94,.25)":"#252525"}`,
+                              borderRadius:8,padding:"8px 12px",fontSize:12,color:"#e0e0e0",
+                              outline:"none",fontFamily:"'SF Mono','Fira Code','Consolas',monospace",
+                              boxSizing:"border-box",letterSpacing:.3,transition:"border-color .2s"}}
+                            onFocus={e=>e.currentTarget.style.borderColor="rgba(212,160,23,.35)"}
+                            onBlur={e=>e.currentTarget.style.borderColor=discoverWalletInput.trim()?"rgba(34,197,94,.25)":"#252525"}
+                          />
+                          <button
+                            onClick={()=>{ const v=discoverWalletInput.trim(); if(!v) return; setDiscoverWallet(v); }}
+                            disabled={!discoverWalletInput.trim()}
+                            style={{padding:"8px 14px",borderRadius:8,border:"none",fontSize:12,fontWeight:700,
+                              cursor:discoverWalletInput.trim()?"pointer":"not-allowed",fontFamily:"inherit",flexShrink:0,
+                              background:discoverWalletInput.trim()?"linear-gradient(135deg,#d4a017,#c9961a)":"#1e1e1e",
+                              color:discoverWalletInput.trim()?"#000":"#333",transition:"all .15s"}}>
+                            确认绑定
+                          </button>
                         </div>
-                      ))}
-                    </>)}
-                  </>)}
-                </>)}
+                        <div style={{marginTop:5,fontSize:10,color:"#5a3a1a",display:"flex",alignItems:"flex-start",gap:4,lineHeight:1.55}}>
+                          <span style={{flexShrink:0,marginTop:1}}>⚠</span>
+                          <span>{discoverWalletInput.trim() ? "绑定后仅可修改一次，请确认地址无误" : "请填写收益到账钱包地址"}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                {/* ── ZIP 文件模式 ── */}
-                {discoverMode==="zip" && (<>
+                  {/* ZIP 文件认领 */}
                   <div style={{fontSize:11,color:"#444",marginBottom:14,lineHeight:1.65}}>
                     如有他人使用您的 ZIP 文件发行代币，可在此提交争议申请。平台核实后，收益将打入上方填写的钱包地址，并出现在「领取收益」列表。
                   </div>
@@ -904,15 +808,15 @@
     { id:1, symbol:"CRVW", name:"Code Review Agent", status:"ACTIVE",
       skills:12, chain:"BSC", fee:"1%", date:"2026/4/14",
       address:"0x7a8d...7777",
-      verifyStatus:"verified",  wallet:"0x168af1...bbc6e6" },
+      verifyStatus:"verified",  earlyApplied:false, wallet:"0x168af1...bbc6e6" },
     { id:2, symbol:"IMGN", name:"Image Gen Agent",   status:"ACTIVE",
       skills:5,  chain:"BSC", fee:"1%", date:"2026/3/20",
       address:"0x9a2c...4fe1",
-      verifyStatus:"pending", wallet:"" },
+      verifyStatus:"pending", earlyApplied:true, wallet:"" },
     { id:3, symbol:"TRAN", name:"Translation Agent", status:"ACTIVE",
       skills:8,  chain:"BSC", fee:"1%", date:"2026/2/10",
       address:"0x3f1a...b22c",
-      verifyStatus:"unverified", wallet:"" },
+      verifyStatus:"unverified", earlyApplied:false, wallet:"" },
   ];
 
   /* ─────────────────────────────────────
@@ -1468,7 +1372,7 @@
     );
   }
 
-  function VerifiedAuthorCard({ verifyStatus="unverified", walletAddress="", taxRate="1%", devFundShare="70%", onVerify=()=>{} }) {
+  function VerifiedAuthorCard({ verifyStatus="unverified", earlyApplied=false, walletAddress="", taxRate="1%", devFundShare="70%", onVerify=()=>{} }) {
     const [editing,       setEditing]       = useState(false);
     const [walletVal,     setWalletVal]     = useState(walletAddress);
     const [inputVal,      setInputVal]      = useState(walletAddress);
@@ -1476,7 +1380,8 @@
     const [walletChanged, setWalletChanged] = useState(false);
 
     const verified = verifyStatus === "verified";
-    const pending  = verifyStatus === "pending";
+    // 审核中状态只对提前认证申请的用户显示，普通用户直接显示未验证
+    const pending  = verifyStatus === "pending" && earlyApplied;
 
     const dotColor   = verified ? "#4ade80" : pending ? "#60a5fa" : "#f59e0b";
     const dotGlow    = verified ? "rgba(74,222,128,.5)" : pending ? "rgba(96,165,250,.5)" : "rgba(245,158,11,.4)";
@@ -1769,7 +1674,7 @@
                 )}
               </div>
               {/* 右：已验证作者卡片 */}
-              <VerifiedAuthorCard key={selectedToken.id} verifyStatus={selectedToken.verifyStatus} walletAddress={selectedToken.wallet} onVerify={goToRewardsDiscover}/>
+              <VerifiedAuthorCard key={selectedToken.id} verifyStatus={selectedToken.verifyStatus} earlyApplied={selectedToken.earlyApplied} walletAddress={selectedToken.wallet} onVerify={goToRewardsDiscover}/>
             </div>
           )}
         </main>
