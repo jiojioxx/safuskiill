@@ -106,10 +106,18 @@
   ───────────────────────────────────── */
   /* GitHub 来源技能自动入账，ZIP/社区上传须先经「发现认领」审核通过才会出现在此列表 */
   const MOCK_REWARDS_INIT = [
-    { id:1, name:"Code Review Agent", icon:"🤖", source:"github",
-      claimStatus:"approved", pending:"0.1240 BNB", earned:"0.0234 BNB" },
-    { id:2, name:"Translation Agent", icon:"🌐", source:"github",
-      claimStatus:"approved", pending:"0.0450 BNB", earned:"0.0156 BNB" },
+    // pending ≥ 0.1 → 可领取
+    { id:1, name:"Code Review Agent",   icon:"🤖", source:"github",
+      claimStatus:"approved", pending:"0.1240 BNB", earned:"0.3820 BNB", arrivalStatus:null },
+    // pending < 0.1 → 不可领取；earned 说明历史领取过 1 次
+    { id:2, name:"Translation Agent",   icon:"🌐", source:"github",
+      claimStatus:"approved", pending:"0.0450 BNB", earned:"0.1170 BNB", arrivalStatus:null },
+    // 24h 已过 → 已到账
+    { id:3, name:"Data Analysis Agent", icon:"📊", source:"github",
+      claimStatus:"approved", pending:"0.0000 BNB", earned:"0.2340 BNB", arrivalStatus:"arrived" },
+    // 24h 已过 → 超时未到账
+    { id:4, name:"Code Generator",      icon:"⚡", source:"github",
+      claimStatus:"approved", pending:"0.0000 BNB", earned:"0.1580 BNB", arrivalStatus:"delayed" },
   ];
 
   /* ─────────────────────────────────────
@@ -135,6 +143,26 @@
     const [claimedIds,    setClaimed]     = useState(new Set());
     const [claimedToday,    setClaimedToday]    = useState(new Set());
     const [failedClaimIds,  setFailedClaimIds]  = useState(new Set());
+    const [toasts,          setToasts]          = useState([]);
+    // arrivalStatuses: { [id]: "waiting" | "arrived" | "delayed" }
+    // 预填 mock 中已有历史状态的技能
+    const [arrivalStatuses, setArrivalStatuses] = useState(() => {
+      const init = {};
+      MOCK_REWARDS_INIT.forEach(s => { if (s.arrivalStatus) init[s.id] = s.arrivalStatus; });
+      return init;
+    });
+
+    const LAUNCH_DATE = new Date("2026-04-20T00:00:00+08:00");
+    const isLaunched  = new Date() >= LAUNCH_DATE;
+
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    const addToast = (msg, type, loading=false, duration=3500) => {
+      const id = Date.now() + Math.random();
+      setToasts(prev => [...prev, { id, msg, type, loading }]);
+      if (duration > 0) setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+      return id;
+    };
+    const removeToast = id => setToasts(prev => prev.filter(t => t.id !== id));
 
     // discover tab state
     const [mainTab,            setMainTab]           = useState(initialTab);
@@ -194,25 +222,47 @@
     const busy     = claimingId !== null;
     const canClose = !busy;
 
-    // ZIP skill unclaimed/rejected → navigate to discover ZIP tab
-    const goToZipClaim = () => { setMainTab("discover"); setDiscoverMode("zip"); };
+    // ZIP skill unclaimed/rejected → navigate to discover tab
+    const goToZipClaim = () => { setMainTab("discover"); };
 
-    const claimReward = (id) => {
+    const claimReward = async (id) => {
       const skill = skills.find(s => s.id === id);
       const pendingAmt = parseFloat(skill?.pending || "0");
-      // already handled, or another claim in flight → ignore
       if (claimingId || claimedIds.has(id) || claimedToday.has(id) || failedClaimIds.has(id)) return;
       setClaiming(id);
-      setTimeout(() => {
-        if (pendingAmt < 0.1) {
-          // below minimum → show failure state after loading
-          setFailedClaimIds(prev => new Set([...prev, id]));
-        } else {
-          setClaimed(prev => new Set([...prev, id]));
-          setClaimedToday(prev => new Set([...prev, id]));
-        }
-        setClaiming(null);
-      }, 1800);
+
+      // Stage 1: wallet authorizing
+      const tid1 = addToast("钱包授权中...", "warning", true, 0);
+      await delay(1500);
+      removeToast(tid1);
+
+      // Stage 2: authorized
+      const tid2 = addToast("授权成功", "success", false, 0);
+      await delay(700);
+      removeToast(tid2);
+
+      // Stage 3: onchain processing
+      const tid3 = addToast("链上处理中...", "info", true, 0);
+      await delay(2000);
+      removeToast(tid3);
+
+      // Stage 4: result
+      if (pendingAmt < 0.1) {
+        setFailedClaimIds(prev => new Set([...prev, id]));
+        addToast("领取失败：可领取余额不足 0.1 BNB", "error", false, 5000);
+      } else {
+        setClaimed(prev => new Set([...prev, id]));
+        setClaimedToday(prev => new Set([...prev, id]));
+        setArrivalStatuses(prev => ({ ...prev, [id]: "waiting" }));
+        // 将 pending 合并入 earned，领取后实时更新行数据和概览数字
+        setSkills(prev => prev.map(s => {
+          if (s.id !== id) return s;
+          const newEarned = ((parseFloat(s.earned) || 0) + pendingAmt).toFixed(4);
+          return { ...s, earned: newEarned + " BNB", pending: "0.0000 BNB" };
+        }));
+        addToast("领取成功！税费将在 24h 内到账", "success", false, 5000);
+      }
+      setClaiming(null);
     };
 
     const S = {
@@ -233,7 +283,7 @@
     const steps = (<>
             <div style={S.hdr}>
               <div>
-                <div style={S.title}>开发者收益认领</div>
+                <div style={S.title}>{isLaunched ? "开发者收益认领" : "开发者收益认领（预计在 2026 年 4 月 25 日开放）"}</div>
                 <div style={S.sub}>认领您的技能交易税收益</div>
               </div>
               {closeBtn}
@@ -266,13 +316,58 @@
                     <span style={{fontSize:12,color:"#c47f0a",flex:1}}>收益钱包未绑定，领取的 BNB 将无法到账。请前往「我的代币」绑定受益人钱包地址。</span>
                   </div>
                 )}
+
+                {/* ─── 收益概览 ─── */}
+                {(()=>{
+                  const approvedSkills = skills.filter(s => s.claimStatus === "approved");
+                  // 领取成功后 skills 数据已直接更新（pending→earned），无需额外 bonus 计算
+                  const totalPending = approvedSkills.reduce((sum, s) =>
+                    sum + (parseFloat(s.pending) || 0), 0);
+                  const totalEarned = skills.reduce((sum, s) =>
+                    sum + (parseFloat(s.earned) || 0), 0);
+                  const claimableCount = approvedSkills.filter(s =>
+                    !claimedIds.has(s.id) && !failedClaimIds.has(s.id) && !claimedToday.has(s.id) &&
+                    (parseFloat(s.pending) || 0) >= 0.1
+                  ).length;
+                  const subLabel = !isLaunched       ? "功能尚未开放"
+                                 : claimableCount > 0 ? `${claimableCount} 个技能可领取`
+                                 : totalPending > 0   ? "余额不足 0.1 BNB"
+                                 : "暂无可领取收益";
+                  return (
+                    <div style={{display:"flex",background:"#111",border:"1px solid #1e1e1e",borderRadius:10,overflow:"hidden",marginBottom:14}}>
+                      <div style={{flex:1,padding:"14px 16px",borderRight:"1px solid #1e1e1e"}}>
+                        <div style={{fontSize:11,color:"#444",marginBottom:6}}>待领取收益</div>
+                        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                          <span style={{fontSize:19,fontWeight:700,letterSpacing:-.5,
+                            color:(!isLaunched||totalPending<0.1)?"#3a3a3a":"#22c55e"}}>
+                            {totalPending>0?"+":""}{totalPending.toFixed(4)}
+                          </span>
+                          <span style={{fontSize:11,color:"#444"}}>BNB</span>
+                        </div>
+                        <div style={{fontSize:10,color:"#333",marginTop:4}}>{subLabel}</div>
+                      </div>
+                      <div style={{flex:1,padding:"14px 16px"}}>
+                        <div style={{fontSize:11,color:"#444",marginBottom:6}}>累计已领取</div>
+                        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                          <span style={{fontSize:19,fontWeight:700,letterSpacing:-.5,
+                            color:totalEarned>0?"#d4a017":"#3a3a3a"}}>
+                            {totalEarned.toFixed(4)}
+                          </span>
+                          <span style={{fontSize:11,color:"#444"}}>BNB</span>
+                        </div>
+                        <div style={{fontSize:10,color:"#333",marginTop:4}}>历史累计到账</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* 领取规则 */}
                 <div style={{display:"flex",alignItems:"center",gap:10,background:"#111",border:"1px solid #1e1e1e",borderRadius:8,padding:"8px 12px",marginBottom:14,flexWrap:"wrap",gap:8}}>
                   <span style={{fontSize:11,color:"#444"}}>GitHub 来源自动入账</span>
                   <span style={{width:1,height:11,background:"#222",flexShrink:0}}/>
                   <span style={{fontSize:11,color:"#444"}}>每代币每日限领 1 次</span>
                   <span style={{width:1,height:11,background:"#222",flexShrink:0}}/>
-                  <span style={{fontSize:11,color:"#444"}}>最低 <span style={{color:"#d4a017",fontWeight:600}}>0.1 BNB</span> 方可领取</span>
+                  <span style={{fontSize:11,color:"#444"}}>可领取收益超过 <span style={{color:"#d4a017",fontWeight:600}}>0.1 BNB</span> 方可领取</span>
                   <span style={{width:1,height:11,background:"#222",flexShrink:0}}/>
                   <span style={{fontSize:11,color:"#444"}}>ZIP 技能须先通过
                     <span onClick={goToZipClaim} style={{color:"#d4a017",cursor:"pointer",marginLeft:3}}>发现认领 →</span>
@@ -319,23 +414,54 @@
                           const belowMin    = pendingAmt < 0.1;
                           const todayDone   = claimedToday.has(r.id);
                           const isFailed    = failedClaimIds.has(r.id);
-                          const btnDisabled = !!claimingId || todayDone || isFailed;
-                          if (isClaimed) return (
+                          const arrival     = arrivalStatuses[r.id]; // "waiting"|"arrived"|"delayed"|undefined
+                          const btnDisabled = !isLaunched || !!claimingId || todayDone || isFailed;
+
+                          // ── 已到账（24h 后确认到账）──
+                          if (arrival === "arrived") return (
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                              <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                已到账
+                              </div>
+                              <div style={{fontSize:10,color:"#2e6a3e",display:"flex",alignItems:"center",gap:3}}>
+                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="4" fill="none" stroke="#2e6a3e" strokeWidth="1.1"/><path d="M2.2 4.5l1.5 1.5L6.8 2.8" stroke="#2e6a3e" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                税费已成功打入您的收益钱包
+                              </div>
+                            </div>
+                          );
+
+                          // ── 超时未到账（24h 后仍未到账）──
+                          if (arrival === "delayed") return (
+                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                              <div style={{fontSize:11,color:"#f59e0b",display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1.5L1 8.5h8L5 1.5z" stroke="#f59e0b" strokeWidth="1.1" strokeLinejoin="round"/><path d="M5 5v1.5" stroke="#f59e0b" strokeWidth="1.1" strokeLinecap="round"/><circle cx="5" cy="7.2" r=".5" fill="#f59e0b"/></svg>
+                                未到账
+                              </div>
+                              <div style={{fontSize:10,color:"#7a5010",display:"flex",alignItems:"center",gap:3}}>
+                                到账超时，可能因链上拥堵，
+                                <span style={{color:"#d4a017",cursor:"pointer",textDecoration:"underline"}}>联系客服 →</span>
+                              </div>
+                            </div>
+                          );
+
+                          // ── 等待到账（已领取，24h 内）──
+                          if (arrival === "waiting" || isClaimed) return (
                             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
                               <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:4}}>
                                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                 已领取
                               </div>
                               <div style={{fontSize:10,color:"#3a5a3a",display:"flex",alignItems:"center",gap:3}}>
-                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                                  <circle cx="4.5" cy="4.5" r="4" stroke="#3a5a3a" strokeWidth="1.1"/>
-                                  <path d="M4.5 2.8v2l1.2 1.2" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                                预计 24h 内到账
+                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="4" stroke="#3a5a3a" strokeWidth="1.1"/><path d="M4.5 2.8v2l1.2 1.2" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                税费将在 24 小时内打入您的收益钱包，请耐心等待
                               </div>
                             </div>
                           );
-                          const btnLabel = isClaiming ? <><div className="spinner-g" style={{width:10,height:10,borderWidth:1.5}}/>结算中</>
+
+                          // ── 正常领取按钮 ──
+                          const btnLabel = !isLaunched  ? "暂未开放"
+                                         : isClaiming ? <><div className="spinner-g" style={{width:10,height:10,borderWidth:1.5}}/>结算中</>
                                          : isFailed   ? "领取失败"
                                          : todayDone  ? "今日已领"
                                          : "领取";
@@ -782,6 +908,39 @@
               </>)}
 
             </div>
+
+      {/* ─── Toast 通知（右下角） ─── */}
+      <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,display:"flex",flexDirection:"column",gap:8,pointerEvents:"none",alignItems:"flex-end"}}>
+        {toasts.map(t => {
+          const C = {
+            warning: { bg:"rgba(245,158,11,.13)", border:"rgba(245,158,11,.35)", text:"#f59e0b" },
+            success: { bg:"rgba(34,197,94,.11)",  border:"rgba(34,197,94,.35)",  text:"#4ade80" },
+            info:    { bg:"rgba(96,165,250,.11)", border:"rgba(96,165,250,.35)", text:"#60a5fa" },
+            error:   { bg:"rgba(239,68,68,.11)",  border:"rgba(239,68,68,.35)",  text:"#f87171" },
+          }[t.type] || { bg:"rgba(96,165,250,.11)", border:"rgba(96,165,250,.35)", text:"#60a5fa" };
+          return (
+            <div key={t.id} className="fade-up" style={{
+              display:"flex",alignItems:"center",gap:9,
+              background:C.bg, border:`1px solid ${C.border}`,
+              borderRadius:10, padding:"10px 14px",
+              boxShadow:"0 4px 24px rgba(0,0,0,.55)",
+              backdropFilter:"blur(10px)",
+              minWidth:210, maxWidth:300,
+              pointerEvents:"auto",
+            }}>
+              {t.loading
+                ? <div style={{width:13,height:13,borderRadius:"50%",border:`2px solid rgba(255,255,255,.12)`,borderTopColor:C.text,flexShrink:0,animation:"spin .7s linear infinite"}}/>
+                : t.type==="success"
+                ? <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{flexShrink:0}}><circle cx="6.5" cy="6.5" r="6" fill={C.text}/><path d="M3.5 6.5l2 2L9.5 4" stroke="#000" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                : t.type==="error"
+                ? <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{flexShrink:0}}><circle cx="6.5" cy="6.5" r="6" fill={C.text}/><path d="M4.5 4.5l4 4M8.5 4.5l-4 4" stroke="#000" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                : null
+              }
+              <span style={{fontSize:12,color:C.text,fontWeight:500,lineHeight:1.5,flex:1}}>{t.msg}</span>
+            </div>
+          );
+        })}
+      </div>
 
     </>);
 
