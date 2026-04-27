@@ -65,7 +65,7 @@
       langLabel: "中文",
       back: "返回",
       pageTitle: "发射代币",
-      pageSubtitle: "通过 Flap 协议为您的 AI 技能创建 BEP-20 代币",
+      pageSubtitle: "为您的 AI 技能在 BNB Chain 上发射代币",
       cardTitle: "代币信息",
       tokenName: "代币名称", tokenNamePh: "例如 Code Review Agent Token",
       ticker: "股票代码", tickerPh: "例如 CRVW",
@@ -144,13 +144,22 @@
       claimZipNote: "通过 ZIP 上传的技能",
       claimZipMethod: "使用钱包签名验证所有权",
       claimDisconnect: "重新上传",
+      platformLabel: "发射平台",
+      platformFlap: "⚡ Flap Protocol",
+      platformFourMeme: "🟡 four.meme",
+      platformHintFlap: "通过 Flap 协议在 BNB Chain 上发射，联合曲线定价，募集目标 16 BNB",
+      platformHintFourMeme: "通过 four.meme 在 BNB Chain 上发射，联合曲线定价，募集目标 24 BNB",
+      fmTitle: "通过 four.meme 发射",
+      fmTokenName: "代币名称", fmSymbol: "股票代码", fmSkill: "关联技能",
+      fmPlatform: "发射平台", fmTarget: "募集目标", fmDeployCost: "发射费用", fmTaxRate: "税率",
+      fmBack: "← 返回", fmConfirm: "确认发射",
     },
     en: {
       navItems: ["Skill Market","Launchpad","Docs","Developer"],
       langLabel: "English",
       back: "Back",
       pageTitle: "Launch Token",
-      pageSubtitle: "Create a BEP-20 token for your AI skill via the Flap Protocol",
+      pageSubtitle: "Launch a token for your AI skill on BNB Chain",
       cardTitle: "Token Info",
       tokenName: "Token Name", tokenNamePh: "e.g. Code Review Agent Token",
       ticker: "Ticker", tickerPh: "e.g. CRVW",
@@ -229,6 +238,15 @@
       claimZipNote: "ZIP-uploaded skills",
       claimZipMethod: "Verify ownership via wallet signature",
       claimDisconnect: "Re-upload",
+      platformLabel: "Launch Platform",
+      platformFlap: "⚡ Flap Protocol",
+      platformFourMeme: "🟡 four.meme",
+      platformHintFlap: "Launch on BNB Chain via Flap Protocol, bonding curve pricing, target 16 BNB",
+      platformHintFourMeme: "Launch on BNB Chain via four.meme, bonding curve pricing, target 24 BNB",
+      fmTitle: "Launch via four.meme",
+      fmTokenName: "Token Name", fmSymbol: "Ticker", fmSkill: "Linked Skill",
+      fmPlatform: "Platform", fmTarget: "Raise Target", fmDeployCost: "Deploy Fee", fmTaxRate: "Tax Rate",
+      fmBack: "← Back", fmConfirm: "Confirm Launch",
     },
   };
 
@@ -857,6 +875,80 @@
   }
 
   /* ─────────────────────────────────────────
+     FOUR.MEME DEPLOY MODAL
+  ───────────────────────────────────────── */
+  function FourMemeDeployModal({ ticker, skillName, onClose, onConfirm, t }) {
+    const [confirming, setConfirming] = useState(false);
+
+    const handleConfirm = () => {
+      setConfirming(true);
+      setTimeout(() => {
+        setConfirming(false);
+        onConfirm();
+      }, 1200);
+    };
+
+    const infoRows = [
+      [t.fmTokenName, ticker],
+      [t.fmSymbol,    ticker],
+      [t.fmSkill,     skillName || "—"],
+    ];
+    const paramRows = [
+      [t.fmPlatform,   "four.meme", true],
+      [t.fmTarget,     "24 BNB",    false],
+      [t.fmDeployCost, "0.01 BNB",  false],
+      [t.fmTaxRate,    "1%",        false],
+    ];
+
+    return (
+      <div style={S.ctOverlay} onClick={confirming ? undefined : onClose}>
+        <div style={{...S.ctModal, maxWidth:440, padding:28}} onClick={e=>e.stopPropagation()}>
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,paddingBottom:16,borderBottom:"1px solid #2a2a2a"}}>
+            <div style={{fontSize:18,fontWeight:700,color:"#fff"}}>{t.fmTitle}</div>
+            <CloseBtn onClick={onClose}/>
+          </div>
+
+          {/* Token info */}
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+            {infoRows.map(([label,value])=>(
+              <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:13,color:"#6b7280"}}>{label}</span>
+                <span style={{fontSize:13,color:"#e0e0e0",fontWeight:500}}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div style={{borderTop:"1px solid #2a2a2a",marginBottom:20}}/>
+
+          {/* Launch params */}
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:28,background:"rgba(212,160,23,.04)",border:"1px solid rgba(212,160,23,.12)",borderRadius:10,padding:"14px 16px"}}>
+            {paramRows.map(([label,value,hl])=>(
+              <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:13,color:"#6b7280"}}>{label}</span>
+                <span style={{fontSize:13,color:hl?"#d4a017":"#e0e0e0",fontWeight:hl?700:500}}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Buttons */}
+          <div style={{display:"flex",gap:12}}>
+            <button onClick={onClose} disabled={confirming}
+              style={{flex:1,padding:"12px",background:"transparent",border:"1px solid #2e2e2e",borderRadius:10,fontSize:14,color:"#9ca3af",cursor:confirming?"not-allowed":"pointer",fontFamily:"inherit"}}>
+              {t.fmBack}
+            </button>
+            <button onClick={handleConfirm} disabled={confirming}
+              style={{flex:2,padding:"12px",background:confirming?"linear-gradient(135deg,#a07010,#8a6010)":"linear-gradient(135deg,#d4a017,#c9961a)",border:"none",borderRadius:10,fontSize:14,fontWeight:700,color:"#000",cursor:confirming?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"background .3s"}}>
+              {confirming ? <><div className="spinner"/><span style={{fontSize:13}}>{t.cmWaiting}</span></> : t.fmConfirm}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────────
      MAIN PAGE
   ───────────────────────────────────────── */
   function LaunchToken() {
@@ -871,6 +963,8 @@
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showToast, setShowToast]     = useState(false);
     const [showClaimModal, setShowClaimModal] = useState(false);
+    const [launchPlatform, setLaunchPlatform] = useState("flap");
+    const [showFourMemeModal, setShowFourMemeModal] = useState(false);
     const [feeOpen, setFeeOpen]         = useState(false);
     const [tickerVal, setTickerVal]     = useState("");
     const [walletOpen, setWalletOpen]   = useState(false);
@@ -1206,6 +1300,31 @@
               <input style={inp("twitter")} placeholder={t.twitterPh} onFocus={()=>setFocused("twitter")} onBlur={()=>setFocused(null)}/>
             </div>
 
+            {/* Platform Toggle */}
+            <div style={{...S.formGroup,marginBottom:20}}>
+              <label style={S.label}>{t.platformLabel}</label>
+              <div style={{display:"flex",gap:8}}>
+                {[
+                  ["flap",     t.platformFlap],
+                  ["fourmeme", t.platformFourMeme],
+                ].map(([key,label])=>(
+                  <button key={key}
+                    onClick={()=>setLaunchPlatform(key)}
+                    style={{
+                      flex:1, padding:"11px 16px", borderRadius:10, cursor:"pointer",
+                      border:`1px solid ${launchPlatform===key?"#d4a017":"#2e2e2e"}`,
+                      background: launchPlatform===key ? "rgba(212,160,23,.06)" : "#111",
+                      color: launchPlatform===key ? "#d4a017" : "#6b7280",
+                      fontSize:14, fontWeight: launchPlatform===key ? 600 : 400,
+                      display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                      fontFamily:"inherit", transition:"all .2s",
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Fee notice */}
             <div style={{...S.formGroup,marginBottom:28}}>
               <div style={S.feeBox}>
@@ -1262,8 +1381,13 @@
               </div>
             </div>
 
+            {/* Platform hint */}
+            <div style={{fontSize:12,color:"#6b7280",marginTop:-14,marginBottom:20,lineHeight:1.6,paddingLeft:2}}>
+              {launchPlatform==="flap" ? t.platformHintFlap : t.platformHintFourMeme}
+            </div>
+
             {/* Create */}
-            <button style={S.createBtn} onClick={()=>setShowCreateModal(true)}>
+            <button style={S.createBtn} onClick={()=>launchPlatform==="flap"?setShowCreateModal(true):setShowFourMemeModal(true)}>
               {t.createBtn}
             </button>
           </div>
@@ -1281,6 +1405,15 @@
           />
         )}
         {showClaimModal && <ClaimFeesModal onClose={()=>setShowClaimModal(false)} t={t}/>}
+        {showFourMemeModal && (
+          <FourMemeDeployModal
+            ticker={effectiveTicker}
+            skillName={selectedSkill?.name}
+            onClose={()=>setShowFourMemeModal(false)}
+            onConfirm={()=>{ setShowFourMemeModal(false); setShowToast(true); }}
+            t={t}
+          />
+        )}
         {showToast && <Toast ticker={effectiveTicker} onDone={()=>setShowToast(false)} t={t}/>}
       </div>
     );

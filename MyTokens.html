@@ -108,16 +108,16 @@
   const MOCK_REWARDS_INIT = [
     // pending ≥ 0.1 → 可领取
     { id:1, name:"Code Review Agent",   icon:"🤖", source:"github",
-      claimStatus:"approved", pending:"0.1240 BNB", earned:"0.3820 BNB", arrivalStatus:null },
+      claimStatus:"approved", pending:"0.1240 BNB", earned:"0.3820 BNB", arrivalStatus:null, launchPlatform:"flap" },
     // pending < 0.1 → 不可领取；earned 说明历史领取过 1 次
     { id:2, name:"Translation Agent",   icon:"🌐", source:"github",
-      claimStatus:"approved", pending:"0.0450 BNB", earned:"0.1170 BNB", arrivalStatus:null },
+      claimStatus:"approved", pending:"0.0450 BNB", earned:"0.1170 BNB", arrivalStatus:null, launchPlatform:"fourmeme" },
     // 24h 已过 → 已到账
     { id:3, name:"Data Analysis Agent", icon:"📊", source:"github",
-      claimStatus:"approved", pending:"0.0000 BNB", earned:"0.2340 BNB", arrivalStatus:"arrived" },
+      claimStatus:"approved", pending:"0.0000 BNB", earned:"0.2340 BNB", arrivalStatus:"arrived", launchPlatform:"flap" },
     // 24h 已过 → 超时未到账
     { id:4, name:"Code Generator",      icon:"⚡", source:"github",
-      claimStatus:"approved", pending:"0.0000 BNB", earned:"0.1580 BNB", arrivalStatus:"delayed" },
+      claimStatus:"approved", pending:"0.0000 BNB", earned:"0.1580 BNB", arrivalStatus:"delayed", launchPlatform:"fourmeme" },
   ];
 
   /* ─────────────────────────────────────
@@ -340,7 +340,7 @@
                         <div style={{display:"flex",alignItems:"baseline",gap:4}}>
                           <span style={{fontSize:19,fontWeight:700,letterSpacing:-.5,
                             color:(!isLaunched||totalPending<0.1)?"#3a3a3a":"#22c55e"}}>
-                            {totalPending>0?"+":""}{totalPending.toFixed(4)}
+                            {totalPending.toFixed(4)}
                           </span>
                           <span style={{fontSize:11,color:"#444"}}>BNB</span>
                         </div>
@@ -377,131 +377,178 @@
                   const isClaiming = claimingId === r.id;
                   const isClaimed  = claimedIds.has(r.id);
                   const isRejected = r.claimStatus === "rejected";
+                  const pendingAmt = parseFloat(r.pending) || 0;
+                  const earnedAmt  = parseFloat(r.earned)  || 0;
+                  const claimedAmt = Math.max(0, earnedAmt - pendingAmt);
+                  const arrival    = arrivalStatuses[r.id];
+                  const belowMin   = pendingAmt < 0.1;
+                  const todayDone  = claimedToday.has(r.id);
+                  const isFailed   = failedClaimIds.has(r.id);
+                  const isFourMeme = r.launchPlatform === "fourmeme";
+
                   return (
-                    <div key={r.id} style={{padding:"12px 0",borderBottom:"1px solid #1a1a1a",background:isRejected?"rgba(239,68,68,.02)":"transparent"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:11}}>
-                        <div style={{width:34,height:34,borderRadius:9,background:isRejected?"rgba(239,68,68,.07)":"#1a1a1a",border:`1px solid ${isRejected?"rgba(239,68,68,.18)":"#222"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>
-                          {r.icon}
-                        </div>
+                    <div key={r.id} style={{
+                      background:"#141414",
+                      border:`1px solid ${isRejected?"rgba(239,68,68,.16)":"#1e1e1e"}`,
+                      borderRadius:12, padding:"16px 18px", marginBottom:10,
+                    }}>
+
+                      {/* ── 卡片顶部：头像 + 名称 + 平台标签 ── */}
+                      <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:12}}>
+                        <div style={{
+                          width:42,height:42,borderRadius:10,flexShrink:0,
+                          background:isRejected?"rgba(239,68,68,.07)":"rgba(212,160,23,.07)",
+                          border:`1px solid ${isRejected?"rgba(239,68,68,.18)":"rgba(212,160,23,.14)"}`,
+                          display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,
+                        }}>{r.icon}</div>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:13,fontWeight:500,color:"#d0d0d0",marginBottom:2}}>{r.name}</div>
-                          <div style={{fontSize:11,color:"#3a3a3a"}}>{r.source==="zip"?"社区上传":"GitHub 来源"} · 累计 {r.earned}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3,flexWrap:"wrap"}}>
+                            <span style={{fontSize:14,fontWeight:700,color:"#e0e0e0",letterSpacing:-.1}}>{r.name}</span>
+                            {isFourMeme
+                              ? <span style={{fontSize:10,fontWeight:600,color:"#d4a017",background:"rgba(212,160,23,.08)",border:"1px solid rgba(212,160,23,.25)",borderRadius:20,padding:"2px 8px",flexShrink:0,letterSpacing:.2}}>four.meme</span>
+                              : <span style={{fontSize:10,fontWeight:600,color:"#60a5fa",background:"rgba(96,165,250,.06)",border:"1px solid rgba(96,165,250,.2)",borderRadius:20,padding:"2px 8px",flexShrink:0,letterSpacing:.2}}>flap.sh</span>
+                            }
+                          </div>
+                          <div style={{fontSize:11,color:"#3a3a3a"}}>{r.source==="zip"?"社区上传":"GitHub 来源"}</div>
                         </div>
-                        {r.claimStatus==="unclaimed" && r.source==="zip" && (
-                          <button onClick={goToZipClaim}
-                            style={{fontSize:12,fontWeight:600,color:"#d4a017",background:"rgba(212,160,23,.07)",border:"1px solid rgba(212,160,23,.18)",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}
-                            onMouseOver={e=>e.currentTarget.style.background="rgba(212,160,23,.14)"}
-                            onMouseOut={e=>e.currentTarget.style.background="rgba(212,160,23,.07)"}>
-                            前往认领 →
-                          </button>
-                        )}
+                        {/* 状态徽章（审核中 / 未通过）*/}
                         {r.claimStatus==="review" && (
-                          <div style={{fontSize:11,color:"#7a6020",background:"rgba(212,160,23,.06)",border:"1px solid rgba(212,160,23,.14)",borderRadius:6,padding:"4px 11px",flexShrink:0,display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{fontSize:11,color:"#7a6020",background:"rgba(212,160,23,.06)",border:"1px solid rgba(212,160,23,.14)",borderRadius:6,padding:"4px 10px",flexShrink:0,display:"flex",alignItems:"center",gap:5}}>
                             <div className="spinner-g" style={{width:9,height:9,borderWidth:1.5,borderTopColor:"#a07012",borderColor:"rgba(160,112,18,.2)"}}/>
                             审核中
                           </div>
                         )}
-                        {r.claimStatus==="rejected" && (
-                          <button onClick={goToZipClaim}
-                            style={{fontSize:12,fontWeight:600,color:"#ef4444",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.18)",borderRadius:7,padding:"5px 13px",cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}
-                            onMouseOver={e=>e.currentTarget.style.background="rgba(239,68,68,.12)"}
-                            onMouseOut={e=>e.currentTarget.style.background="rgba(239,68,68,.06)"}>
-                            重新申请 →
-                          </button>
+                        {isRejected && (
+                          <div style={{fontSize:11,color:"#ef4444",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.18)",borderRadius:6,padding:"4px 10px",flexShrink:0}}>未通过</div>
                         )}
-                        {r.claimStatus==="approved" && (()=>{
-                          const pendingAmt  = parseFloat(r.pending);
-                          const belowMin    = pendingAmt < 0.1;
-                          const todayDone   = claimedToday.has(r.id);
-                          const isFailed    = failedClaimIds.has(r.id);
-                          const arrival     = arrivalStatuses[r.id]; // "waiting"|"arrived"|"delayed"|undefined
-                          const btnDisabled = !isLaunched || !!claimingId || todayDone || isFailed;
-
-                          // ── 已到账（24h 后确认到账）──
-                          if (arrival === "arrived") return (
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                              <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                已到账
-                              </div>
-                              <div style={{fontSize:10,color:"#2e6a3e",display:"flex",alignItems:"center",gap:3}}>
-                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="4" fill="none" stroke="#2e6a3e" strokeWidth="1.1"/><path d="M2.2 4.5l1.5 1.5L6.8 2.8" stroke="#2e6a3e" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                税费已成功打入您的收益钱包
-                              </div>
-                            </div>
-                          );
-
-                          // ── 超时未到账（24h 后仍未到账）──
-                          if (arrival === "delayed") return (
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                              <div style={{fontSize:11,color:"#f59e0b",display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1.5L1 8.5h8L5 1.5z" stroke="#f59e0b" strokeWidth="1.1" strokeLinejoin="round"/><path d="M5 5v1.5" stroke="#f59e0b" strokeWidth="1.1" strokeLinecap="round"/><circle cx="5" cy="7.2" r=".5" fill="#f59e0b"/></svg>
-                                未到账
-                              </div>
-                              <div style={{fontSize:10,color:"#7a5010",display:"flex",alignItems:"center",gap:3}}>
-                                到账超时，可能因链上拥堵，
-                                <span style={{color:"#d4a017",cursor:"pointer",textDecoration:"underline"}}>联系客服 →</span>
-                              </div>
-                            </div>
-                          );
-
-                          // ── 等待到账（已领取，24h 内）──
-                          if (arrival === "waiting" || isClaimed) return (
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                              <div style={{fontSize:11,color:"#22c55e",display:"flex",alignItems:"center",gap:4}}>
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="#22c55e"/><path d="M2.5 5l1.6 1.6L7.5 3" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                已领取
-                              </div>
-                              <div style={{fontSize:10,color:"#3a5a3a",display:"flex",alignItems:"center",gap:3}}>
-                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="4" stroke="#3a5a3a" strokeWidth="1.1"/><path d="M4.5 2.8v2l1.2 1.2" stroke="#3a5a3a" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                税费将在 24 小时内打入您的收益钱包，请耐心等待
-                              </div>
-                            </div>
-                          );
-
-                          // ── 正常领取按钮 ──
-                          const btnLabel = !isLaunched  ? "暂未开放"
-                                         : isClaiming ? <><div className="spinner-g" style={{width:10,height:10,borderWidth:1.5}}/>结算中</>
-                                         : isFailed   ? "领取失败"
-                                         : todayDone  ? "今日已领"
-                                         : "领取";
-                          const btnColor = isClaiming ? "#22c55e"
-                                         : isFailed   ? "#ef4444"
-                                         : btnDisabled ? "#333" : "#22c55e";
-                          const btnBg    = isClaiming ? "transparent"
-                                         : isFailed   ? "rgba(239,68,68,.07)"
-                                         : btnDisabled ? "#161616" : "rgba(34,197,94,.12)";
-                          const btnBorder= isFailed   ? "rgba(239,68,68,.22)"
-                                         : btnDisabled ? "#222" : "rgba(34,197,94,.25)";
-                          return (
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}}>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{fontSize:13,fontWeight:700,color:(belowMin||isFailed)?"#555":"#22c55e"}}>+{r.pending}</span>
-                                <button onClick={()=>claimReward(r.id)} disabled={btnDisabled}
-                                  style={{display:"flex",alignItems:"center",gap:5,padding:"5px 13px",
-                                    background:btnBg, border:`1px solid ${btnBorder}`,
-                                    borderRadius:7,fontSize:12,fontWeight:600,color:btnColor,
-                                    cursor:btnDisabled?"not-allowed":"pointer",fontFamily:"inherit",transition:"all .15s",whiteSpace:"nowrap"}}
-                                  onMouseOver={e=>{if(!btnDisabled)e.currentTarget.style.background="rgba(34,197,94,.22)";}}
-                                  onMouseOut={e=>{e.currentTarget.style.background=btnBg;}}>
-                                  {btnLabel}
-                                </button>
-                              </div>
-                              {isFailed && (
-                                <div style={{fontSize:10,color:"#7a2a2a",display:"flex",alignItems:"center",gap:3}}>
-                                  ✕ 余额不足 0.1 BNB，无法到账
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
                       </div>
+
+                      {/* ── 收益钱包行 ── */}
+                      <div style={{display:"flex",alignItems:"center",gap:7,background:"#111",border:"1px solid #1a1a1a",borderRadius:8,padding:"7px 11px",marginBottom:12}}>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{flexShrink:0}}>
+                          <rect x="1.5" y="4.5" width="13" height="9" rx="1.5" stroke="#3a3a3a" strokeWidth="1.3"/>
+                          <path d="M1.5 7.5h13" stroke="#3a3a3a" strokeWidth="1.3"/>
+                          <circle cx="11.5" cy="10" r="1" fill="#3a3a3a"/>
+                          <path d="M4.5 2.5h7" stroke="#3a3a3a" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                        <span style={{fontSize:11,color:"#3a3a3a",flexShrink:0}}>收益钱包</span>
+                        <span style={{fontSize:11,color:beneficiaryWallet?"#7a7a7a":"#2a2a2a",fontFamily:"monospace",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {beneficiaryWallet || "未绑定"}
+                        </span>
+                      </div>
+
+                      {/* ── 三列统计：累计收益 / 已领取 / 待领取 ── */}
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+                        {[
+                          ["累计收益", r.earned,                        "#e0e0e0"],
+                          ["已领取",   claimedAmt.toFixed(4) + " BNB",  "#22c55e"],
+                          ["待领取",   r.pending,                        belowMin?"#444":"#e0e0e0"],
+                        ].map(([label,value,color])=>(
+                          <div key={label} style={{background:"#111",border:"1px solid #1a1a1a",borderRadius:8,padding:"10px 12px"}}>
+                            <div style={{fontSize:10,color:"#3a3a3a",marginBottom:5}}>{label}</div>
+                            <div style={{fontSize:13,fontWeight:700,color,letterSpacing:-.2}}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* ── 操作行 ── */}
+                      {r.claimStatus==="approved" && (()=>{
+                        // 已到账
+                        if (arrival==="arrived") return (
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#22c55e",fontWeight:600}}>
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#22c55e"/><path d="M4 7l2 2L10 5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              已到账
+                            </div>
+                            <span style={{fontSize:11,color:"#2e6a3e"}}>税费已成功打入您的收益钱包</span>
+                          </div>
+                        );
+                        // 超时未到账
+                        if (arrival==="delayed") return (
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#f59e0b",fontWeight:600}}>
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2L1.5 12h11L7 2z" stroke="#f59e0b" strokeWidth="1.3" strokeLinejoin="round"/><path d="M7 7v2" stroke="#f59e0b" strokeWidth="1.3" strokeLinecap="round"/><circle cx="7" cy="10.2" r=".7" fill="#f59e0b"/></svg>
+                              到账超时
+                            </div>
+                            <span style={{fontSize:11,color:"#7a5010",cursor:"pointer",textDecoration:"underline"}}
+                              onMouseOver={e=>e.currentTarget.style.color="#d4a017"}
+                              onMouseOut={e=>e.currentTarget.style.color="#7a5010"}>联系客服 →</span>
+                          </div>
+                        );
+                        // 等待到账（24h 内）
+                        if (arrival==="waiting" || isClaimed) return (
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#22c55e"}}>
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#22c55e"/><path d="M4 7l2 2L10 5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              已领取，等待到账
+                            </div>
+                            <span style={{fontSize:11,color:"#3a5a3a"}}>预计 24h 内到账</span>
+                          </div>
+                        );
+                        // 正常操作按钮行
+                        const claimDisabled = !isLaunched || !!claimingId || todayDone || isFailed || belowMin;
+                        const btnLabel = !isLaunched ? "暂未开放"
+                                       : isClaiming  ? <><div className="spinner-g" style={{width:10,height:10,borderWidth:1.5}}/>结算中</>
+                                       : isFailed    ? "领取失败"
+                                       : todayDone   ? "今日已领"
+                                       : belowMin    ? "暂无可领收益"
+                                       : "领取";
+                        const claimBg     = isFailed    ? "rgba(239,68,68,.07)"
+                                          : claimDisabled ? "#111"
+                                          : "rgba(34,197,94,.12)";
+                        const claimColor  = isFailed    ? "#ef4444"
+                                          : claimDisabled ? "#333"
+                                          : "#22c55e";
+                        const claimBorder = isFailed    ? "rgba(239,68,68,.22)"
+                                          : claimDisabled ? "#1e1e1e"
+                                          : "rgba(34,197,94,.25)";
+                        return (
+                          <div style={{display:"flex",gap:8,alignItems:"center",justifyContent:"flex-start"}}>
+                            <button onClick={()=>!claimDisabled && claimReward(r.id)}
+                              disabled={claimDisabled}
+                              style={{padding:"9px 28px",display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+                                borderRadius:8,border:`1px solid ${claimBorder}`,fontSize:13,fontWeight:600,fontFamily:"inherit",
+                                background:claimBg,color:claimColor,
+                                cursor:claimDisabled?"not-allowed":"pointer",transition:"all .15s"}}
+                              onMouseOver={e=>{if(!claimDisabled)e.currentTarget.style.background="rgba(34,197,94,.22)";}}
+                              onMouseOut={e=>{e.currentTarget.style.background=claimBg;}}>
+                              {btnLabel}
+                            </button>
+                            <button style={{padding:"9px 16px",borderRadius:8,border:"1px solid #1e1e1e",background:"transparent",fontSize:12,color:"#3a3a3a",cursor:"pointer",fontFamily:"inherit",flexShrink:0,transition:"all .15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.borderColor="#2e2e2e";e.currentTarget.style.color="#666";}}
+                              onMouseOut={e=>{e.currentTarget.style.borderColor="#1e1e1e";e.currentTarget.style.color="#3a3a3a";}}>
+                              领取记录
+                            </button>
+                          </div>
+                        );
+                      })()}
+
+                      {/* unclaimed ZIP → 前往认领 */}
+                      {r.claimStatus==="unclaimed" && r.source==="zip" && (
+                        <button onClick={goToZipClaim}
+                          style={{width:"100%",padding:"9px",borderRadius:8,border:"1px solid rgba(212,160,23,.2)",background:"rgba(212,160,23,.06)",fontSize:13,fontWeight:600,color:"#d4a017",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}
+                          onMouseOver={e=>e.currentTarget.style.background="rgba(212,160,23,.12)"}
+                          onMouseOut={e=>e.currentTarget.style.background="rgba(212,160,23,.06)"}>
+                          前往认领 →
+                        </button>
+                      )}
+
+                      {/* rejected → 原因 + 重新申请 */}
                       {isRejected && r.rejectReason && (
-                        <div style={{marginTop:7,marginLeft:45,fontSize:11,color:"#7a2a2a",lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:5}}>
+                        <div style={{marginTop:10,fontSize:11,color:"#7a2a2a",lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:5}}>
                           <span style={{flexShrink:0,opacity:.7}}>⚠</span>
                           {r.rejectReason}
                         </div>
                       )}
+                      {isRejected && (
+                        <button onClick={goToZipClaim}
+                          style={{marginTop:8,padding:"8px 16px",borderRadius:7,border:"1px solid rgba(239,68,68,.22)",background:"rgba(239,68,68,.06)",fontSize:12,fontWeight:600,color:"#ef4444",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}
+                          onMouseOver={e=>e.currentTarget.style.background="rgba(239,68,68,.12)"}
+                          onMouseOut={e=>e.currentTarget.style.background="rgba(239,68,68,.06)"}>
+                          重新申请 →
+                        </button>
+                      )}
+
                     </div>
                   );
                 })}
@@ -993,15 +1040,18 @@
     { id:1, symbol:"CRVW", name:"Code Review Agent", status:"ACTIVE",
       skills:12, chain:"BSC", fee:"1%", date:"2026/4/14",
       address:"0x7a8d...7777",
-      verifyStatus:"verified",  earlyApplied:false, wallet:"0x168af1...bbc6e6" },
+      verifyStatus:"verified",  earlyApplied:false, wallet:"0x168af1...bbc6e6",
+      launchPlatform:"flap" },
     { id:2, symbol:"IMGN", name:"Image Gen Agent",   status:"ACTIVE",
       skills:5,  chain:"BSC", fee:"1%", date:"2026/3/20",
       address:"0x9a2c...4fe1",
-      verifyStatus:"pending", earlyApplied:true, wallet:"" },
+      verifyStatus:"pending", earlyApplied:true, wallet:"",
+      launchPlatform:"fourmeme" },
     { id:3, symbol:"TRAN", name:"Translation Agent", status:"ACTIVE",
       skills:8,  chain:"BSC", fee:"1%", date:"2026/2/10",
       address:"0x3f1a...b22c",
-      verifyStatus:"unverified", earlyApplied:false, wallet:"" },
+      verifyStatus:"unverified", earlyApplied:false, wallet:"",
+      launchPlatform:"flap" },
   ];
 
   /* ─────────────────────────────────────
@@ -1205,11 +1255,18 @@
           }}>
             <span>技能: {token.skills}</span>
             <Dot/>
-            <span>{token.chain}</span>
-            <Dot/>
-            <span>{token.fee} 税费</span>
+            <span style={{fontSize:11,fontWeight:600,color:"#555",background:"rgba(255,255,255,.04)",border:"1px solid #2a2a2a",borderRadius:4,padding:"1px 6px"}}>{token.fee}</span>
+            {token.launchPlatform === "fourmeme" && (
+              <span style={{fontSize:10,fontWeight:700,color:"#d4a017",background:"rgba(212,160,23,.1)",border:"1px solid rgba(212,160,23,.25)",borderRadius:4,padding:"1px 6px",letterSpacing:.3}}>4M</span>
+            )}
+            <span style={{fontSize:11,fontWeight:600,color:"#555",background:"rgba(255,255,255,.04)",border:"1px solid #2a2a2a",borderRadius:4,padding:"1px 6px"}}>{token.chain}</span>
             <Dot/>
             <span>{token.date}</span>
+            <Dot/>
+            {token.launchPlatform === "fourmeme"
+              ? <span style={{fontSize:10,fontWeight:700,color:"#d4a017",background:"rgba(212,160,23,.08)",border:"1px solid rgba(212,160,23,.22)",borderRadius:20,padding:"2px 7px",letterSpacing:.2}}>four.meme</span>
+              : <span style={{fontSize:10,fontWeight:700,color:"#60a5fa",background:"rgba(96,165,250,.06)",border:"1px solid rgba(96,165,250,.2)",borderRadius:20,padding:"2px 7px",letterSpacing:.2}}>flap.sh</span>
+            }
           </div>
         </div>
 
@@ -1776,12 +1833,162 @@
   }
 
   /* ─────────────────────────────────────
+     LAUNCH PLATFORM MODAL
+     Flap Protocol v5 vs four.meme comparison
+  ───────────────────────────────────── */
+  function LaunchPlatformModal({ onClose, onSelect }) {
+    const [hov, setHov] = useState(null);
+
+    const platforms = [
+      {
+        key: "flap",
+        name: "Flap Protocol",
+        tag: "SafuSkill 原生",
+        tagColor: "#d4a017",
+        tagBg: "rgba(212,160,23,.1)",
+        tagBorder: "rgba(212,160,23,.25)",
+        accent: "#d4a017",
+        accentBg: "rgba(212,160,23,.07)",
+        accentBorder: "rgba(212,160,23,.2)",
+        desc: "SafuSkill 原生发射协议，开发者税费自动归属，在「领取收益」直接认领",
+        feeRows: [
+          { label:"平台手续费", value:"1%（税前 gross）" },
+          { label:"开发者分成", value:"70% → 可认领", highlight: true },
+          { label:"激励空投层", value:"15% → 市值里程碑空投" },
+          { label:"平台留存",   value:"15%" },
+        ],
+        features: [
+          { icon:"✅", text:"税费自动记账，无需手动归因" },
+          { icon:"✅", text:"「领取收益」页面直接认领 BNB" },
+          { icon:"✅", text:"联合曲线定价 (x+h)(y+r)=K" },
+          { icon:"✅", text:"流通量≥80% 自动迁移 PancakeSwap" },
+          { icon:"✅", text:"SafuSkill 内盘 + 外盘双阶段" },
+        ],
+        cta: "用 Flap 发射",
+        ctaStyle: { background:"linear-gradient(135deg,#d4a017,#c9961a)", color:"#000" },
+      },
+      {
+        key: "fourmeme",
+        name: "four.meme",
+        tag: "第三方平台",
+        tagColor: "#c084fc",
+        tagBg: "rgba(192,132,252,.1)",
+        tagBorder: "rgba(192,132,252,.25)",
+        accent: "#c084fc",
+        accentBg: "rgba(192,132,252,.07)",
+        accentBorder: "rgba(192,132,252,.2)",
+        desc: "BSC 主流 meme 发射平台，1% 平台费归平台，开发者可选额外自定义税费",
+        feeRows: [
+          { label:"平台手续费", value:"1% → 归 four.meme 平台" },
+          { label:"开发者分成", value:"❌ 无，手续费不可认领", muted: true },
+          { label:"自定义税费", value:"可选 +1/3/5/10%（TaxToken）" },
+          { label:"税费去向",   value:"创始人 / 持有者 / 销毁 / 流动性" },
+        ],
+        features: [
+          { icon:"🔹", text:"TokenManager V1/V2 合约发射" },
+          { icon:"🔹", text:"可选 AntiSniperFeeMode 防夹" },
+          { icon:"🔹", text:"可选 X Mode（不迁移 DEX）" },
+          { icon:"🔹", text:"同等参数：10亿供应 / 24 BNB 募集" },
+          { icon:"⚠️", text:"开发者税费收益不在 SafuSkill 可认领范围" },
+        ],
+        cta: "用 four.meme 发射",
+        ctaStyle: { background:"rgba(192,132,252,.15)", color:"#c084fc", border:"1px solid rgba(192,132,252,.35)" },
+      },
+    ];
+
+    return (
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}
+        onClick={onClose}>
+        <div style={{background:"#161616",border:"1px solid #222",borderRadius:16,width:"100%",maxWidth:700,boxShadow:"0 28px 72px rgba(0,0,0,.9)",overflow:"hidden"}}
+          onClick={e=>e.stopPropagation()} className="fade-up">
+
+          {/* Header */}
+          <div style={{padding:"22px 26px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontSize:17,fontWeight:700,color:"#fff",marginBottom:4}}>选择发射平台</div>
+              <div style={{fontSize:12,color:"#444"}}>不同平台的税费机制与开发者收益归属不同，请按需选择</div>
+            </div>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:"#444",cursor:"pointer",fontSize:18,lineHeight:1,padding:4,flexShrink:0}}>✕</button>
+          </div>
+
+          {/* Comparison grid */}
+          <div style={{padding:"20px 26px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            {platforms.map(p => (
+              <div key={p.key}
+                onMouseEnter={()=>setHov(p.key)} onMouseLeave={()=>setHov(null)}
+                style={{background:hov===p.key?"#1c1c1c":"#111",border:`1px solid ${hov===p.key?p.accentBorder:"#1e1e1e"}`,borderRadius:12,padding:18,transition:"all .18s",display:"flex",flexDirection:"column",gap:0}}>
+
+                {/* Platform header */}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:15,fontWeight:700,color:"#e0e0e0",marginBottom:3}}>{p.name}</div>
+                    <span style={{fontSize:10,fontWeight:700,color:p.tagColor,background:p.tagBg,border:`1px solid ${p.tagBorder}`,borderRadius:5,padding:"1px 7px"}}>{p.tag}</span>
+                  </div>
+                </div>
+
+                {/* Desc */}
+                <div style={{fontSize:11,color:"#555",lineHeight:1.65,marginBottom:14}}>{p.desc}</div>
+
+                {/* Fee breakdown */}
+                <div style={{background:p.accentBg,border:`1px solid ${p.accentBorder}`,borderRadius:8,padding:"10px 12px",marginBottom:12}}>
+                  <div style={{fontSize:10,fontWeight:700,color:p.accent,letterSpacing:.8,marginBottom:8,textTransform:"uppercase"}}>费用结构</div>
+                  {p.feeRows.map((row,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"3px 0",borderBottom:i<p.feeRows.length-1?"1px solid rgba(255,255,255,.04)":"none"}}>
+                      <span style={{fontSize:11,color:"#444"}}>{row.label}</span>
+                      <span style={{fontSize:11,fontWeight:row.highlight?700:400,color:row.highlight?p.accent:row.muted?"#333":"#777"}}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Features */}
+                <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:16,flex:1}}>
+                  {p.features.map((f,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,fontSize:11,color:"#555",lineHeight:1.5}}>
+                      <span style={{flexShrink:0}}>{f.icon}</span>
+                      <span>{f.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA */}
+                <button onClick={()=>{ onSelect(p.key); onClose(); }}
+                  style={{width:"100%",padding:"9px",borderRadius:8,border:p.ctaStyle.border||"none",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"opacity .15s",...p.ctaStyle}}
+                  onMouseOver={e=>e.currentTarget.style.opacity=".85"}
+                  onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                  {p.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom note */}
+          <div style={{padding:"0 26px 20px"}}>
+            <div style={{background:"rgba(96,165,250,.04)",border:"1px solid rgba(96,165,250,.12)",borderRadius:9,padding:"10px 14px",display:"flex",gap:9,alignItems:"flex-start"}}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{flexShrink:0,marginTop:1}}>
+                <circle cx="6.5" cy="6.5" r="6" stroke="#60a5fa" strokeWidth="1.2"/>
+                <path d="M6.5 6v3.5" stroke="#60a5fa" strokeWidth="1.2" strokeLinecap="round"/>
+                <circle cx="6.5" cy="4.2" r=".7" fill="#60a5fa"/>
+              </svg>
+              <span style={{fontSize:11,color:"#3a5a7a",lineHeight:1.65}}>
+                <span style={{color:"#60a5fa",fontWeight:600}}>重要：</span>
+                仅 Flap Protocol 发射的代币税费会自动记入 SafuSkill 台账，可在「领取收益」认领。four.meme 平台的 1% 手续费归平台所有，开发者自定义的 TaxToken 税费由合约独立分配，均不经过 SafuSkill 收益体系。
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─────────────────────────────────────
      MAIN PAGE
   ───────────────────────────────────── */
   function MyTokens() {
-    const [activeNav,      setActiveNav]      = useState("tokens");
-    const [selectedId,     setSelectedId]     = useState(MOCK_TOKENS[0].id);
-    const [rewardsInitTab, setRewardsInitTab] = useState("mine");
+    const [activeNav,       setActiveNav]       = useState("tokens");
+    const [selectedId,      setSelectedId]      = useState(MOCK_TOKENS[0].id);
+    const [rewardsInitTab,  setRewardsInitTab]  = useState("mine");
+    const [showLaunchModal, setShowLaunchModal] = useState(false);
+    const [launchResult,    setLaunchResult]    = useState(null); // { platform }
     const tokens = MOCK_TOKENS;
     const selectedToken = tokens.find(t => t.id === selectedId) || tokens[0];
 
@@ -1830,6 +2037,18 @@
               <p style={{ fontSize:13, color:"#555" }}>{sub}</p>
             </div>
 
+            {/* 发射代币按钮（仅代币页显示） */}
+            {isTokens && (
+              <button onClick={()=>setShowLaunchModal(true)}
+                style={{display:"flex",alignItems:"center",gap:7,padding:"9px 18px",
+                  background:"linear-gradient(135deg,#d4a017,#c9961a)",
+                  border:"none",borderRadius:10,fontSize:13,fontWeight:700,
+                  color:"#000",cursor:"pointer",fontFamily:"inherit",flexShrink:0,transition:"opacity .15s"}}
+                onMouseOver={e=>e.currentTarget.style.opacity=".85"}
+                onMouseOut={e=>e.currentTarget.style.opacity="1"}>
+                <IconRocket size={13} color="#000"/> 发射代币
+              </button>
+            )}
           </div>
 
           {/* Content area */}
@@ -1860,6 +2079,39 @@
               </div>
               {/* 右：已验证作者卡片 */}
               <VerifiedAuthorCard key={selectedToken.id} verifyStatus={selectedToken.verifyStatus} earlyApplied={selectedToken.earlyApplied} walletAddress={selectedToken.wallet} onVerify={goToRewardsDiscover}/>
+            </div>
+          )}
+
+          {/* 发射平台选择弹窗 */}
+          {showLaunchModal && (
+            <LaunchPlatformModal
+              onClose={()=>setShowLaunchModal(false)}
+              onSelect={platform=>setLaunchResult({ platform, ts: Date.now() })}
+            />
+          )}
+
+          {/* 发射结果提示条 */}
+          {launchResult && (
+            <div key={launchResult.ts} className="fade-up" style={{
+              position:"fixed", bottom:24, left:"50%", transform:"translateX(-50%)",
+              zIndex:1000, display:"flex", alignItems:"center", gap:10,
+              background: launchResult.platform==="fourmeme" ? "rgba(192,132,252,.13)" : "rgba(212,160,23,.13)",
+              border: `1px solid ${launchResult.platform==="fourmeme" ? "rgba(192,132,252,.35)" : "rgba(212,160,23,.35)"}`,
+              borderRadius:12, padding:"12px 20px", boxShadow:"0 4px 28px rgba(0,0,0,.6)",
+              backdropFilter:"blur(10px)", minWidth:320,
+            }}>
+              <IconRocket size={14} color={launchResult.platform==="fourmeme"?"#c084fc":"#d4a017"}/>
+              <span style={{fontSize:13,fontWeight:600,color:launchResult.platform==="fourmeme"?"#c084fc":"#d4a017",flex:1}}>
+                已选择 {launchResult.platform==="fourmeme" ? "four.meme" : "Flap Protocol"} 发射模式
+              </span>
+              {launchResult.platform==="flap" && (
+                <span style={{fontSize:11,color:"#7a6020"}}>税费收益将自动记入「领取收益」</span>
+              )}
+              {launchResult.platform==="fourmeme" && (
+                <span style={{fontSize:11,color:"#7a4fa0"}}>平台手续费归 four.meme，不计入 SafuSkill 收益</span>
+              )}
+              <button onClick={()=>setLaunchResult(null)}
+                style={{background:"transparent",border:"none",color:"#555",cursor:"pointer",fontSize:16,lineHeight:1,padding:"0 0 0 8px",flexShrink:0}}>✕</button>
             </div>
           )}
         </main>
